@@ -13,8 +13,8 @@ with Hyena Chow, a Pearlbird Cutthroat with Pearlbird Chow).
 
 | Species | Role & signature attack | Bond buff | Notable food / gift |
 |---|---|---|---|
-| **Hyena** | Brawler. Its bite inflicts **Pain** build-up — stacking hits wear an enemy down. | Physical damage | Eats raw meat, fish, cactus fruit. Chow: pressed meat + fish. Gifts raw meat and scaled leather. |
-| **Armored Hyena** | Tank. **Brace** — Hunt as One opens a counterattack stance that negates incoming blows and ripostes with heavy impact and a random debuff (Weaken or Sapped). Tamed with **Hyena Chow**. | Physical damage | Same diet as the Hyena. |
+| **Hyena** | Brawler. Its bite inflicts **Pain** build-up — stacking hits wear an enemy down. | Physical damage | Eats raw meat, fish, cactus fruit. Chow: pressed meat + fish. Gifts raw meat and scaled leather. Fed Alpha Jerky or Raw Alpha Meat, it gets a temporary physical damage buff scaled by loyalty. |
+| **Armored Hyena** | Tank. **Brace** — Hunt as One opens a counterattack stance that negates incoming blows and ripostes with heavy impact and a random debuff (Weaken or Sapped). Tamed with **Hyena Chow**. | Physical damage | Same diet as the Hyena, including the Alpha Jerky / Raw Alpha Meat damage buff. |
 | **Pearlbird** | Support striker. Its signature attack inflicts **Cripple**. | Movement speed | Eats gaberries and vegetables. Chow: maize + gaberries. Gifts eggs — and, taught the gift skill, quality feathers for fletching arrows. |
 | **Veaber** | Hex-dealer. Its signature attack inflicts **hexes chosen by what you've recently fed it** — a scavenger whose diet shapes its bite. | Decay damage | Scavenger diet (food waste, seeds, oils, bones). Chow: food waste + crystal powder + mushroom. Gifts eggs. |
 

@@ -49,7 +49,7 @@ Beyond ordinary diet food, several consumables do more than fill the belly:
 |---|---|
 | **Taming chow** | The food used to tame the species. As a Bond food it also feeds and grants the strongest health regen. See [Taming](./taming.md). |
 | **Weather foods & drinks** | Warming/cooling potions, teas, and water give the pet temperature relief when fed, on top of any normal meal. **Every** pet can drink water (off-diet and even when satiated). See [Temperature & blankets](./temperature-and-blankets.md). |
-| **Buff foods** | Certain species turn specific reagents into a temporary combat buff (for example, the Veaber and mineral dust). |
+| **Buff foods** | Certain species turn specific reagents into a temporary combat buff (for example, the Veaber and mineral dust, or a Hyena/Armored Hyena fed Alpha Jerky or Raw Alpha Meat — a physical damage buff scaled by loyalty). |
 | **Relics** | A few species accept a specific vanilla relic for a permanent, stacking bonus — feeding a base Pearlbird its Courage relic, or a base Veaber a Leyline Figment. These are not meals; they don't fill hunger or heal. |
 
 Which foods, buffs, and relics a species takes is data-driven per creature — see
