@@ -14,6 +14,45 @@ and re-read it with the **`reloadcfg`** dev verb.
 Most systems ship a **kill-switch** (`Enable…`). Turning one off returns that feature to pre-feature
 behaviour without disturbing the rest of the mod.
 
+The command channel this mod polls is **`BepInEx/config/bw_cmd.txt`** (see [Dev verbs](./dev-verbs.md)),
+and the per-creature data tables live as embedded defaults, each overridable by dropping a file of the
+same name in `BepInEx/config/` (see [Data manifests](./data-manifests.md)).
+
+### Example configuration
+
+`BepInEx/config/cobalt.beastwhispering.cfg` — created on first launch. Excerpt (representative
+sections; the file has 31 in all):
+
+```ini
+[Keys]
+TameKey = F7
+FeedKey = F8
+
+[Systems]
+InitialLoyalty = 50
+HungerSecondsPerDay = 1200
+UseSpeciesStats = true
+
+[Temperature]
+EnableTemperatureSystem = true
+
+[Combat]
+AttackDamage = 25
+AttackInterval = 1.4
+
+[Taming]
+EnableTamingFoods = true
+TameRadius = 15
+
+[Bandage]
+EnableBandageHealing = true
+BandageItemIds = 4400010
+```
+
+A full generated example lives at `tests/fixtures/config/cobalt.beastwhispering.cfg`, and the shared
+cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispering.cfg.overlay`
+(see `config/README.md`).
+
 ## [Keys] — keybinds
 
 | Key | Default | Effect |
@@ -236,6 +275,14 @@ See [Skills](./skills.md).
 | `[Lantern] LanternStatusNames` | `Runic Lantern Amplified,Runic Lantern,RunicLantern` | Status-identifier candidates for the lantern (base and amplified are separate statuses). |
 | `[Lantern] LanternUpOffset` | `0.5` | How far above the pet the mirrored lantern floats (m). |
 | `[Lantern] LanternForwardOffset` | `0.3` | How far ahead of the pet it floats (m). |
+
+## [Bandage] — applying a bandage to the pet
+
+| Key | Default | Effect |
+|---|---|---|
+| `EnableBandageHealing` | `true` | On a bandage item the right-click "Feed" inventory action becomes "Bandage <pet>": pressing it puts the vanilla heal-over-time status on the pet's anchor (the same one a bandaged player gets), consumes the bandage, and grants the player no buff. Off = a bandage is an ordinary item again (the action falls back to "Feed", which a bandage refuses). |
+| `BandageItemIds` | `4400010` | ItemIDs treated as a "bandage" for the apply-to-pet action, comma-separated (vanilla Bandages = `4400010`). Add a modded bandage's id to make it applicable too. |
+| `BandageStatusNames` | `Bandage` | Status-identifier candidates for the heal status a bandage grants, comma-separated, first that resolves wins (identifiers are asset data; `statusdump`/`bandagedump` list what resolved). |
 
 ## [Anchor] — the invisible combat body
 

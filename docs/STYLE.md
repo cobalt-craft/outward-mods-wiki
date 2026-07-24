@@ -12,6 +12,12 @@ factual, present-tense, and scannable. The house style is modeled on the
   gets a one-line "you won't interact with this directly."
 - **Use tables for anything repeatable** — settings (key / default / effect), commands, data columns,
   creature stats. Use bullets for tips and short lists.
+- **Always name the config paths and show an example config.** Every project doc states the full path
+  to its configuration file (`BepInEx/config/cobalt.<name>.cfg`), its command-channel file
+  (`BepInEx/config/<Mod>_cmd.txt`), and any config-override data tables, and includes an
+  `### Example configuration` — an inline `.cfg` excerpt (real sections/keys/defaults) plus, where one
+  exists, the path to a committed example (`tests/fixtures/config/…`, `config/shared/….overlay`). A
+  kit with no config of its own says so explicitly (`Config: none`).
 - **Present tense, third person, neutral.** Describe what the software does.
 - **Cross-link with relative links** (`../kits/forgekit.md`, `./taming.md`). End each page with a
   "See also" and a link back to its section index.
@@ -41,8 +47,8 @@ factual, present-tense, and scannable. The house style is modeled on the
 
 ## For players       <- only where a player-facing surface exists; else a one-line "it's a library"
 ## Features / How it works
-## Settings          <- config table
-## Commands          <- dev-verb table
+## Settings          <- config path + config table + an `### Example configuration` .cfg excerpt
+## Commands          <- command-channel file path + dev-verb table
 ## For modders       <- how to depend on it, public API, extension points, traps
 ## See also          <- relative links + a link back to the section index
 ```

@@ -33,6 +33,19 @@ Copy the template and you inherit, already wired:
 - A **smoke-test Harmony patch** that confirms Harmony and the game-library references resolve at
   runtime.
 
+### Example configuration
+
+`BepInEx/config/cobalt.hellooutward.cfg` — created on first launch. The template binds one key, so a
+fresh fork's config is a single section (this doubles as the template for a new mod's config):
+
+```ini
+[General]
+GreetOnEachAreaLoad = true
+```
+
+The `[Keys] GreetKey` pair (see [Adding a keybind](#adding-a-keybind)) ships commented out and bound
+to `KeyCode.None`, so it produces no config section until you wire a real key.
+
 ## Scaffold a new mod
 
 `scripts/new-mod.sh <ModName>` clones HelloOutward into a ready-to-build project. It:

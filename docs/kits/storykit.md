@@ -76,6 +76,21 @@ tree layout with no game boot at all.
 The `Recon` / `Diag` settings drive scaffolding for exploratory work on a future quest engine and
 have no effect on a shipped NPC.
 
+### Example configuration
+
+`BepInEx/config/cobalt.storykit.cfg` — created on first launch. Excerpt:
+
+```ini
+[Story]
+EnableStory = true
+
+[Recon]
+EnableStoryRecon = false
+
+[Diag]
+StoryReconPatches = false
+```
+
 ## Commands
 
 Write a verb into `BepInEx/config/StoryKit_cmd.txt` and it runs on the next poll (even while paused).

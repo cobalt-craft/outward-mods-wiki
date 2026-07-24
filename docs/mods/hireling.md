@@ -79,6 +79,31 @@ stats layer on top.
 | Stats | `UseFolkStats` | `true` | Blend the FolkStats table with the live capture. Off = capture only. |
 | Stats | `PreferCapturedVitals` | `true` | When blending, the captured HP/speed win over the table row. Off = the row sets vitals too. |
 
+### Example configuration
+
+`BepInEx/config/cobalt.hireling.cfg` — created on first launch. Excerpt:
+
+```ini
+[Keys]
+RecruitKey = F4
+
+[Recruit]
+RecruitRange = 15
+
+[Clone]
+EquipmentStrip = Components
+
+[Combat]
+AttackDamage = 25
+AttackInterval = 1.4
+AggroRange = 12
+AttackRange = 2.6
+
+[Stats]
+UseFolkStats = true
+PreferCapturedVitals = true
+```
+
 **FolkStats table.** The follower-stats table ships embedded with a single bandit-like `Default`
 row. To customize it, create `BepInEx/config/FolkStats.txt` in the same format — one row per NPC
 name, plus a `Default`. Names are matched exactly first, then by longest partial match, then falling

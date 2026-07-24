@@ -51,7 +51,7 @@ yourself:
 |---|---|
 | [Beastwhispering](mods/beastwhispering/README.md) | ForgeKit, SkillKit, CompanionKit, AggroKit, NetKit, StoryKit, **SideLoader** |
 | [Hireling](mods/hireling.md) | ForgeKit, CompanionKit, AggroKit, NetKit |
-| [SaveSync](mods/savesync.md) | ForgeKit |
+| [Cloudward](mods/cloudward.md) | ForgeKit |
 | [SpawnKit](kits/spawnkit.md) | ForgeKit, CompanionKit, AggroKit, NetKit |
 
 (SideLoader is a separate community mod that Beastwhispering builds on for its custom items and

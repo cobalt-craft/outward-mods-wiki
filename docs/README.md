@@ -16,7 +16,7 @@ New here? Start with **[Installing](installing.md)**.
 |---|---|
 | [Beastwhispering](mods/beastwhispering/README.md) | Tame wild Outward animals as persistent pets — feed them, bond with them, and fight alongside them. |
 | [Hireling](mods/hireling.md) | Recruit a townsperson as a persistent human follower. |
-| [SaveSync](mods/savesync.md) | Sync your saves across devices via a mounted/shared folder. |
+| [Cloudward](mods/cloudward.md) | Sync your saves across devices via a mounted/shared folder. |
 | [SpawnKit](kits/spawnkit.md) | Spawn any creature beside you from an in-game menu. |
 
 ## For modders

@@ -96,6 +96,32 @@ an expedition: SpawnKit takes the whole party through a loading screen to the do
 Config values are re-read live with the `reloadcfg` command (a raw file edit alone does nothing until
 then, or a relaunch); a few — the corpse policy and cached bodies — apply to *new* spawns only.
 
+### Example configuration
+
+`BepInEx/config/cobalt.spawnkit.cfg` — created on first launch. Excerpt:
+
+```ini
+[Spawner]
+Enabled = true
+MaxActiveSpawns = 8
+SpawnDistance = 5
+
+[Menu]
+EnableMenu = true
+MenuKey = F11
+
+[Expedition]
+EnableExpeditions = true
+ConfirmMenuExpedition = true
+
+[Coop]
+EnableCoopSpawns = true
+```
+
+Dev commands run from `BepInEx/config/SpawnKit_cmd.txt`, and the species→scene table is
+config-overridable by dropping `BepInEx/config/DonorScenes.txt` (see *How it works*). The
+shared-settings overlay is `config/shared/cobalt.spawnkit.cfg.overlay` (see `config/README.md`).
+
 ## Commands
 
 Everything the menu does is also driven by writing a line into `BepInEx/config/SpawnKit_cmd.txt` — it

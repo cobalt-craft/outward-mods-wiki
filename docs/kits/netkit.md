@@ -62,6 +62,17 @@ to run the same build.
 | `VerboseNet` | `true` | Log every send/receive as one line under the owning channel's tag. Turn off to keep only the counters and ring buffer. |
 | `DisconnectTimeoutMs` | `0` | Override Photon's disconnect timeout (vanilla is 10000 ms). At the default, a peer silent for longer than 10 s during a long load or a network hitch is torn down and re-read as "gone". Widen to `30000`–`60000` to ride those out. `0` leaves the vanilla value untouched; negative is ignored. Applied once at startup. |
 
+### Example configuration
+
+`BepInEx/config/cobalt.netkit.cfg` — created on first launch. Excerpt:
+
+```ini
+[Net]
+Transport = Rpc
+EventCode = 177
+HeartbeatSeconds = 30
+```
+
 ## Commands
 
 Write a verb into `BepInEx/config/NetKit_cmd.txt` and it runs on the next poll (even while the game

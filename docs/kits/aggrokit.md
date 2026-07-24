@@ -76,6 +76,25 @@ stealth), redirect detections onto a decoy, or make a character's hits generate 
 The detection-side control patches and the targetability override gate are always installed but stay
 inert until a command or a mod activates them, so they cost nothing when unused.
 
+### Example configuration
+
+`BepInEx/config/cobalt.aggrokit.cfg` — created on first launch. Excerpt:
+
+```ini
+[Dev]
+EnableCommandFile = true
+DumpKey = F3
+
+[Research]
+EnableObservation = false
+
+[Fixes]
+BlockSquadSelfTarget = true
+```
+
+A full generated example lives at `tests/fixtures/config/cobalt.aggrokit.cfg`, and the shared-settings
+overlay is `config/shared/cobalt.aggrokit.cfg.overlay` (see `config/README.md`).
+
 ## Commands
 
 Write a verb into `BepInEx/config/ak_cmd.txt` and it runs on the next poll (even while the game is

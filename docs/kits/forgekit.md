@@ -79,8 +79,11 @@ the pack's copy and keeps its own.
 
 ## Settings
 
-ForgeKit has no configuration of its own. The pieces it provides (`TableLoader`, `CommandChannel`,
-`Keybinds`) read the *consuming* mod's files and config, always under that mod's logger.
+ForgeKit has no configuration file of its own — it provides the command channel and config-table
+helpers that consuming mods use. The pieces it ships (`TableLoader`, `CommandChannel`, `Keybinds`)
+read the *consuming* mod's files and config, always under that mod's logger. Each consumer gets its
+own command file at `BepInEx/config/<Mod>_cmd.txt`; ForgeKit itself neither writes a `.cfg` nor polls
+a command file.
 
 ## Commands
 

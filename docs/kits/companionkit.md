@@ -111,6 +111,28 @@ each pet's networked anchor. They have no combat, HUD or simulation.
 | `PinToAnchor` | `false` | Pin each effigy body onto its pet's networked anchor replica instead of navigating it independently. |
 | `AnchorAnimSpy` | `false` | Diagnostic: periodically dump every foreign anchor replica's animator state. |
 
+### Example configuration
+
+`BepInEx/config/cobalt.companionkit.cfg` — created on first launch. Excerpt:
+
+```ini
+[Expedition]
+CaptureOnSceneEntry = false
+AutoWarmAtBoot = needed
+AlwaysWarmSpecies = Pearlbird
+
+[Rig]
+RepairSkinnedBones = true
+
+[Effigy]
+EnableCompanionEffigies = true
+MaxBodies = 4
+```
+
+Dev commands run from `BepInEx/config/ck_cmd.txt`, and the species→scene donor table is
+config-overridable by dropping `BepInEx/config/DonorScenes.txt` (see *How it works*). The
+shared-settings overlay is `config/shared/cobalt.companionkit.cfg.overlay` (see `config/README.md`).
+
 ## Commands
 
 Write a verb into `BepInEx/config/ck_cmd.txt`; it runs on the next poll (even while paused). An unknown

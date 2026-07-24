@@ -54,9 +54,9 @@ the mod calls `SkillRegistry.Register(...)` once per skill. SkillKit then takes 
 
 ## Commands
 
-SkillKit runs no command channel of its own. It exposes a dev-verb pack that a consuming mod
-registers onto its own channel (`SkillVerbs.RegisterAll(...)`); the verbs then answer on that mod's
-`<mod>_cmd.txt`.
+SkillKit has no configuration file of its own (`Config: none`) and runs no command channel of its
+own. It exposes a dev-verb pack that a consuming mod registers onto its own channel
+(`SkillVerbs.RegisterAll(...)`); the verbs then answer on that mod's `BepInEx/config/<mod>_cmd.txt`.
 
 | Verb | Effect |
 |---|---|
