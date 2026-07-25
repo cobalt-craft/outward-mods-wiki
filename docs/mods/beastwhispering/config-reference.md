@@ -30,6 +30,7 @@ FeedKey = F8
 
 [Systems]
 InitialLoyalty = 50
+LoyaltyGainPercent = 5
 HungerSecondsPerDay = 1200
 UseSpeciesStats = true
 
@@ -91,6 +92,7 @@ cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispe
 | `TempEscalateSeconds` | `30` | Sustained out-of-band seconds to worsen one comfort stage. |
 | `TempRecoverSeconds` | `15` | Sustained in-band seconds to recover one comfort stage. |
 | `SpeciesDailyDecay` | `15` | Loyalty lost per day without feeding. |
+| `LoyaltyGainPercent` | `5` | Percent of every **positive** loyalty gain (feeding, kill credit, first region crossing) that actually lands — the "slow, hard-won bond" lever. Nothing is lost to rounding: the leftover fraction is banked per pet and saved with it, so twenty preferred meals still deliver the ten loyalty one unscaled meal used to. Losses are **not** scaled by this. `100` = the original fast-bonding rates. |
 | `SimTickSeconds` | `2` | How often (game-seconds) the pet systems advance. |
 | `CastWatchdogWarnSeconds` | `5` | Log (diagnostic only) when the player's cast has been open this long. |
 | `CastWatchdogClearSeconds` | `30` | Force-clear a wedged casting flag after this long. `0` = never. |

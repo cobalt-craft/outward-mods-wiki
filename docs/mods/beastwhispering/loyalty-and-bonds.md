@@ -30,10 +30,27 @@ grants you.
 | A day without feeding | −15 (species decay; more in bad weather) |
 | The pet is critically hurt | −10 |
 | The pet is downed in combat | −20 |
-| You flee combat, leaving the pet engaged | −15 |
 
 Cold or heat also accelerates the daily decay — see
 [Temperature & blankets](./temperature-and-blankets.md).
+
+### Gains are slow — losses are not
+
+A bond is meant to be **hard won**. Every *gain* in that table is scaled down to **5%** of its listed
+value before it lands, so a preferred meal is worth **+0.5**, not +10, and a kill credit is worth
+**+0.25**. Every *loss* lands at its full face value. Building a Devoted pet is the work of many
+sessions of feeding, fighting and travelling together; neglecting one still costs you quickly.
+
+Nothing is lost to rounding. The fraction a gain doesn't deliver is **banked on that pet** and the
+next gain adds onto it, so twenty preferred meals hand over exactly the ten loyalty a single
+unscaled meal used to. The bank is saved with the pet, so partial progress survives quitting.
+
+The practical consequence: after one meal the loyalty number often **doesn't visibly move**. That is
+the system working, not a failed feed — the `petstatus` dev verb reads out how much is banked toward
+the next point.
+
+If you'd rather bond at the old pace, set `LoyaltyGainPercent = 100` — see
+[Config reference](./config-reference.md).
 
 ### Abandonment
 

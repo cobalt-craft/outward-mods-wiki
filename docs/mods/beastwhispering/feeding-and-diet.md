@@ -28,6 +28,10 @@ Every species has its own diet list. Foods come in two kinds:
 | **Preferred** | +10 (default) | Ordinary foods the species likes. |
 | **Bond** | +20 (default) | The species' favourite — usually its own chow. Outranks Preferred when both match. |
 
+> **Those are face values.** Loyalty gains land at **5%** of them by default (a preferred meal is
+> worth +0.5), with the remainder banked on the pet so it still adds up over many meals — bonding is
+> meant to be slow. See [Gains are slow — losses are not](./loyalty-and-bonds.md#gains-are-slow--losses-are-not).
+
 A diet entry can be a specific item or a whole food category (any Meat, any Fish, any Vegetable, and
 so on). The exact per-species diets live in the data files — see [Data manifests](./data-manifests.md).
 
