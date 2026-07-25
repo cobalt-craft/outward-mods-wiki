@@ -6,9 +6,10 @@ time**.
 
 ## The taming loop
 
-1. **Get the recipe.** Every tameable creature drops a **recipe scroll** for its taming food when it
-   dies. Read the scroll to learn the recipe. (By default the drop is guaranteed, though the rate is
-   configurable.)
+1. **Get the recipe.** Once you've learned the **Scatology** pet skill (from the pet trainer — see
+   [Skills](./skills.md)), every tameable creature drops a **recipe scroll** for its taming food when
+   it dies. Read the scroll to learn the recipe. (With Scatology learned the drop is guaranteed by
+   default; both the skill requirement and the drop rate are configurable.)
 2. **Cook the taming food.** Each tameable species has its own food — its **"chow"** — cooked at a
    **cooking pot** from a handful of ingredients. One craft yields a few chow.
 3. **Use the chow near a wild one.** With the chow in your inventory, use it while a wild creature of

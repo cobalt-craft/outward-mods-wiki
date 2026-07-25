@@ -179,6 +179,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `PlayerMeleeRangeMeters` | `3.5` | How close you must be to the pet's target for the synced melee strike to connect. |
 | `PlayerMeleeConeDegrees` | `100` | Front-cone width the target must be inside for the synced strike to connect. |
 | `PetMeleeRangeMeters` | `4.5` | How close the pet must be to its target for its melee special to connect. |
+| `ObserverPatch` | `false` | Diagnostic only (not a gate): log the player's real weapon connects while a Synergy attempt is open, to compare against the judged verdict. Decided at startup — relaunch to change. |
 
 ## [ForTheKill] — the Synergy spender
 

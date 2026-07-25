@@ -15,6 +15,7 @@ you install. This section is for **modders** building on them.
 | [NetKit](netkit.md) | sync your own state across a Photon co-op session | ForgeKit | no |
 | [SkillKit](skillkit.md) | ship a custom **learnable skill** (active or passive) | ForgeKit | yes (runtime) |
 | [StoryKit](storykit.md) | add an **NPC / trainer** with dialogue and a skill tree | ForgeKit | yes (compile) |
+| [EnchantKit](enchantkit.md) | apply vanilla **enchantments** and spawn pre-enchanted gear from a command (dev / testing tool) | ForgeKit | no |
 | [CompanionKit](companionkit.md) | give the player a **persistent creature companion** | ForgeKit, AggroKit, NetKit | no |
 | [SpawnKit](spawnkit.md) | **spawn creatures** at runtime as real vanilla enemies | ForgeKit, CompanionKit, NetKit | no |
 
@@ -29,6 +30,7 @@ ForgeKit                      dev tooling — no dependencies
   ├── NetKit                  Photon co-op transport
   ├── SkillKit                custom skills            (+ SideLoader)
   ├── StoryKit                NPCs / trainers          (+ SideLoader)
+  ├── EnchantKit              enchant / spawn gear     (dev / testing tool)
   └── CompanionKit            persistent companions    (needs ForgeKit + AggroKit + NetKit)
         └── SpawnKit          runtime creature spawns  (needs CompanionKit + NetKit)
 ```

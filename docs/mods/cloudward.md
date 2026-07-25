@@ -104,6 +104,8 @@ Enable = false
 MountPath =
 MarkerFileName = .outward-sync-root
 AutoCreateMarker = true
+OnMountDown = FallbackLocal
+OnLockHeld = FallbackLocal
 ForkResolution = NewestWins
 
 [Lock]

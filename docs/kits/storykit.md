@@ -70,7 +70,7 @@ tree layout with no game boot at all.
 | Section | Key | Default | Effect |
 |---|---|---|---|
 | `Story` | `EnableStory` | `true` | Master kill-switch. Off: registered specs are still accepted, but no template is built and the director spawns nothing. An NPC already standing in the current scene survives until the next scene change (spawning is the gated act). |
-| `Recon` | `EnableStoryRecon` | `false` | Enables temporary quest-event recon instrumentation (the `qevent*` / `storyrecon` dev verbs and their logging). Not needed for normal play. |
+| `Recon` | `EnableStoryRecon` | `false` | Enables the temporary quest-event recon instrumentation and its `[SRECON]` logging. The `qevent*` / `storyrecon` dev verbs are always available but degrade to a note when this is off. Not needed for normal play. |
 | `Diag` | `StoryReconPatches` | `false` | Arms the passive recon Harmony taps (quest-event load/save, deaths, interaction triggers) that log a `[SRECON]` timeline. Off keeps those hot paths unpatched. Also gated by `EnableStoryRecon`; a change takes effect on relaunch. |
 
 The `Recon` / `Diag` settings drive scaffolding for exploratory work on a future quest engine and

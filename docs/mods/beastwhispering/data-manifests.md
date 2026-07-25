@@ -83,6 +83,7 @@ produced in-game with the **`registrydump`** dev verb, then copied into `data/re
 | `names` | Rewrite any raw numeric IDs in the manifests back to display names (round-trip-safe). |
 | `seed` | Fill comfort bands from wiki region data (non-destructive). |
 | `build` | Regenerate the embedded shipped tables from the manifests. |
+| `import` | Read the shipped tables back into `data/species/*.json` manifests (a one-time bootstrap). |
 
 ## Adding or editing a creature
 

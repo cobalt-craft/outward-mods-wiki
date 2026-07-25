@@ -38,10 +38,12 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 | `petdown` | Down the pet via the real downed flow (tests the re-form-after-defeat path). |
 | `petheal` | Heal the pet to full. |
 | `pethealth` | Report the pet's current/max HP. |
+| `bandage` | Apply the first bandage in your inventory to the pet (the right-click "Bandage" action's pipeline, headless). |
 | `petstatus` | One-screen dump of the pet's whole state (loyalty, hunger, comfort, stance, combat). |
 | `pettab` | Open the injected Companion menu tab directly. |
 | `petpanel` | Dump the Companion-tab display model to the log (data check with no menu open). |
 | `petsound` | Play the species attack/hurt/death sounds in sequence. |
+| `vocals` | Toggle the body-synced species attack vocal live. |
 
 ## Feeding & items
 
@@ -54,7 +56,6 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 | `giveblanket [heat\|cool]` | Spawn a consumable blanket. |
 | `givefeather [loyalty\|quality] [qty]` | Spawn Pearlbird feathers of a given quality. |
 | `hr <0-5> [seconds]` | Stage a Health Recovery regen on the pet (feed-free). |
-| `giveblanket` / `givewater` | Spawn a blanket / a filled waterskin (water via the shared item verbs). |
 
 ## Skills & progression
 
@@ -84,7 +85,7 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `tamingdump` | Taming-food table & registration. |
 | `tempdump` | Temperature / comfort / blanket state. |
 | `mealdump` | Food-hex meal history & next-hit mix. |
-| `sigildump` | Sigil-synergy registry & detection. |
+| `sigildump` / `sigilspawn` | Sigil-synergy registry & detection / place a sigil world item at your feet. |
 | `geardump` | Equipped-gear effects. |
 | `weatherdump` | Weather-food buff state. |
 | `scentdump` | Scent-sense table & tracker. |
@@ -97,6 +98,7 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `bracedump` / `brace` | Brace stance state / force-enter. |
 | `echodump` / `echo` | Skill-echo roster / trigger. |
 | `warddump` / `lanterndump` | Ward-share / lantern-share state. |
+| `bandagedump` | Bandage-to-pet pipeline (resolved item/status, live anchor state, last action). |
 | `foodcats` | The 8 food-category tags → live tag names/UIDs. |
 | `speciesaudit` | Cross-table check for tameable-but-missing rows. |
 | `statusicons` | Pet status-icon pipeline (inputs → wanted → the player's actual statuses). |
@@ -107,6 +109,7 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `donorspot` | Log the current scene's AI roster as pastable donor-scene lines. |
 | `anchorstatus` / `anchorforce` / `anchorclear` / `anchorphys` / `anchortest` | Anchor state & weld diagnostics. |
 | `visdump` / `visfix` | Puppet draw-readiness dump / repair. |
+| `yaw <deg>` | Live rig-facing tune for a body that walks sideways/backward (persist the winner in `[Pet] SpeciesYawOffsets`). |
 | `animdump` / `posdump` / `compdump` / `drifttest` | Animator / position / component / drift diagnostics. |
 | `combatcheck` | Combat-state readout. |
 | `sniff` | Force a scent scan now. |
@@ -159,7 +162,7 @@ for unattended test sessions.
 | `aggro <me\|pet> [name]` / `pacify [radius]` | Force / clear enemy aggro. |
 | `killnearest [species] [radius]` | Overkill the nearest wild creature through the real damage pipeline. |
 | `combatcheck` / `combatclear` | Read / clear combat state. |
-| `scenedump` / `statusdump` / `skydump` / `groundprobe` / `ragdolldump` / `psdump` / `combatmgrdump` / `keybinds` | Engine-state dumps. |
+| `scenedump` / `statusdump` / `skydump` / `ragdolldump` / `psdump` / `combatmgrdump` / `keybinds` | Engine-state dumps. |
 
 ## See also
 

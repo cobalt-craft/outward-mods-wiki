@@ -13,7 +13,8 @@ you. It's for players who want to stage fights, and for modders who want a one-l
 - Type: gameplay tool + reusable library (kit)
 - GUID: `cobalt.spawnkit`
 - Requires: BepInEx 5 (Outward's Mono branch), plus [ForgeKit](./forgekit.md),
-  [CompanionKit](./companionkit.md), and [NetKit](./netkit.md)
+  [CompanionKit](./companionkit.md), [NetKit](./netkit.md), and [AggroKit](./aggrokit.md)
+  (CompanionKit pulls it in)
 - Config: `BepInEx/config/cobalt.spawnkit.cfg`
 - Commands: `BepInEx/config/SpawnKit_cmd.txt`
 
@@ -166,7 +167,7 @@ SpawnKit also registers ForgeKit's shared [CommonVerbs](./forgekit.md) pack on t
 | Symptom | What it means | What to do |
 |---|---|---|
 | `No spawnable species matches '<x>'` | Not in the table | Check `spawnlist`; add a line to `BepInEx/config/DonorScenes.txt` |
-| `has NO viable donor (all candidates oversized)` | A region-only creature, not stocked yet | Run `spawnexpedition <species>` (or the menu's expedition button) |
+| `has NO additive donor — every candidate is an oversized region/town scene` | A region-only creature, not stocked yet | Run `spawnexpedition <species>` (or the menu's expedition button) |
 | First spawn of a creature pauses, later ones don't | Normal — that's the body fetch | Use `spawnprewarm` to pay it early |
 | No mods load at all, no crash log | Wrong Steam branch (IL2CPP instead of Mono) | See [Installing](../installing.md) |
 

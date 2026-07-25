@@ -192,9 +192,12 @@ this gate governs lock-on and melee eligibility, not projectiles.
 
 `AggroKit.AggroEvents` exposes the finer detection-pipeline hooks used by the `stealthme` / `decoy` /
 `noaggro` commands — `SetDetectionVeto`, `SetDetectionRedirect`, `SetNoAggroDealer` — plus C# events
-(`Detected`, `Hurt`, `TargetChanged`, `StateChanged`) a mod can subscribe to. Those events and the
-`[AGGRO]` recording buffer only fill when observation is armed (`[Research] EnableObservation`, or
-`aggrolog on`); the veto/redirect/no-aggro *controls* run regardless.
+(`Detected`, `Hurt`, `TargetChanged`, `StateChanged`) a mod can subscribe to. These fall into two
+groups. `Detected` and `Hurt` fire whenever an AI notices or is struck by something — their patches
+are always installed, alongside the veto/redirect/no-aggro *controls*, which likewise run regardless.
+`TargetChanged` and `StateChanged`, together with the `[AGGRO]` recording buffer, only fill when
+observation is armed (`[Research] EnableObservation`, or `aggrolog on`), since those taps are the
+ones that stay unpatched by default.
 
 ## See also
 

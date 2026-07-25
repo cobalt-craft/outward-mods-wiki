@@ -33,6 +33,7 @@ has the dependency map and a "which kit do I need" table.
 | [NetKit](kits/netkit.md) | Photon co-op networking. |
 | [SpawnKit](kits/spawnkit.md) | Runtime creature spawning. |
 | [StoryKit](kits/storykit.md) | NPCs, trainers, and dialogue. |
+| [EnchantKit](kits/enchantkit.md) | Apply enchantments and spawn pre-enchanted gear (dev / testing tool). |
 | [HelloOutward](mods/hellooutward.md) | Starter template for a new mod. |
 
 ## About this wiki

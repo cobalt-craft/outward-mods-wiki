@@ -85,7 +85,7 @@ edit or delete.
 |---|---|---|
 | `CaptureOnSceneEntry` | `false` | When on, entering an oversized region that still has uncached donor species runs the capture in place — zero loading screens, but it clones every uncached species on *every* such entry, so it's off by default. |
 | `AutoWarmAtBoot` | `needed` | Once-per-launch template warm at the first gameplay ready. `needed` = only when the active companion's species is region-only and has no cached body; `all` = re-warm every recorded scene with uncached species; `off` = never. |
-| `AlwaysWarmSpecies` | `Pearlbird` | Comma-separated species warmed at the same boot pass regardless of the mode (the packaging knob for a mod whose headline creature is region-only — a hand-off bundle can't ship a `.cfg`, so this ships as a code default). Set empty to opt out. |
+| `AlwaysWarmSpecies` | `Pearlbird` | Comma-separated species warmed at the same boot pass regardless of `AutoWarmAtBoot`'s mode (the packaging knob for a mod whose headline creature is region-only — a hand-off bundle can't ship a `.cfg`, so this ships as a code default). Only fires on a launch with no companion, or when the active companion's species is itself listed — a save bonded to another species never pays a boot trip it didn't ask for. Set empty to opt out. |
 | `AutoWarmRetrySeconds` | `60` | If a vanilla load is still in flight at boot, how long the auto-warm waits for the loader to settle before giving up. `0` = don't wait. |
 | `ReturnRetrySeconds` | `20` | Safety net for an expedition's return leg: re-request the trip home if no load has started this long after asking. `0` = never retry (the watchdog still applies). |
 | `AllowCoop` | `false` | Allow an expedition to start while guests are connected. Off by design — a stuck guest continue-gate can wedge the whole party. |
@@ -101,6 +101,12 @@ edit or delete.
 
 Effigies show *other players'* companions on this machine as local, purely cosmetic bodies that follow
 each pet's networked anchor. They have no combat, HUD or simulation.
+
+Cross-machine companion bodies are the newest part of the kit and have limitations a player will see. An
+effigy needs a live creature to clone into its body: a species that isn't already cached on this machine
+and has no matching wild nearby appears as a neutral ghost stand-in that idles in place until a source
+creature comes within range, at which point it forms into the real body. The same fallback applies to a
+guest's own companion when it re-forms with no creature nearby to clone.
 
 | Key | Default | Effect |
 |---|---|---|

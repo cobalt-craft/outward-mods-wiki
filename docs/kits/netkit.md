@@ -31,8 +31,11 @@ on that channel without ever touching Photon itself. [CompanionKit](./companionk
 What NetKit owns so a consumer mod doesn't have to:
 
 - **One handshake.** When peers join or a scene loads, NetKit sends a single `nk.hello` carrying the
-  protocol version and the map of every registered channel and its version (plus an optional
-  per-channel extension string). From that map it works out, per channel, which peers can speak it.
+  protocol version, the map of every registered channel and its version (plus an optional
+  per-channel extension string), and the sender's build identity. From that map it works out, per
+  channel, which peers can speak it. If a peer's build identity differs from yours, NetKit logs a
+  one-time advisory note — a stale install is a common reason co-op misbehaves even when both sides
+  read as modded.
 - **A peer ledger and absence detector.** Peer readiness is surfaced per channel
   (`OnPeerReady` / `OnPeerLost` / `IsPeerReady` / `ReadyCount`) — a peer can support one channel but
   not another. If a joined peer never sends a hello within a grace window, NetKit warns once that it
@@ -46,8 +49,10 @@ What NetKit owns so a consumer mod doesn't have to:
 
 New builds speak only NetKit's wire format. A pre-NetKit peer (an older build that predates this
 layer) doesn't answer the hello, so the handshake reads it as unmodded and co-op cooperation is
-refused. This is by design — the mods ship as one bundle, so every machine in a session is expected
-to run the same build.
+refused. Even between two NetKit builds, a difference in build identity draws the advisory
+mismatch note above — mismatched bundles are the most common source of co-op oddities. This is by
+design: the mods ship as one bundle, so every machine in a session is expected to run the same
+build.
 
 ## Settings
 
@@ -55,7 +60,7 @@ to run the same build.
 
 | Key | Default | Effect |
 |---|---|---|
-| `Transport` | `Rpc` | Which Photon backend carries traffic. `Rpc` is the live-proven relay piggybacked on the game's own network object. `Event` is an alternative built on Photon's `RaiseEvent` (no game object needed); it is implemented but opt-in until it clears live testing. |
+| `Transport` | `Rpc` | Which Photon backend carries traffic. `Rpc` is the proven relay piggybacked on the game's own network object and is the recommended default. `Event` is an alternative built on Photon's `RaiseEvent` (no game object needed); it is available but off by default — leave it on `Rpc` unless you have a specific reason to switch. |
 | `EventCode` | `177` | The Photon event code the `Event` transport uses (0–199; 200+ are reserved). Consulted only when `Transport = Event`. Change only if it collides with another mod's event code. |
 | `HeartbeatSeconds` | `30` | While in a room, log one heartbeat line per channel every N seconds (role, peers ready, the consumer's fragment, network time), so a log names when a session went quiet. `0` disables it. |
 | `HelloWarnSeconds` | `10` | How long after a peer joins to wait for its hello before warning that it appears unmodded. |

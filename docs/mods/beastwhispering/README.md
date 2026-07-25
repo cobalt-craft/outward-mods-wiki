@@ -8,8 +8,8 @@ fights at your side, and grows more useful the more it trusts you.
 - Type: gameplay mod
 - Requires: BepInEx 5 (Mono branch), SideLoader, and its kits ([ForgeKit](../../kits/forgekit.md),
   [SkillKit](../../kits/skillkit.md), [CompanionKit](../../kits/companionkit.md),
-  [AggroKit](../../kits/aggrokit.md), [NetKit](../../kits/netkit.md)) — all pulled in automatically.
-  See [Installing](../../installing.md).
+  [StoryKit](../../kits/storykit.md), [AggroKit](../../kits/aggrokit.md),
+  [NetKit](../../kits/netkit.md)) — all pulled in automatically. See [Installing](../../installing.md).
 - Config: `BepInEx/config/cobalt.beastwhispering.cfg`
 - Commands: `BepInEx/config/bw_cmd.txt`
 
@@ -27,8 +27,10 @@ Only certain species can be tamed — see [Creatures](./creatures.md).
 The core loop:
 
 1. **Find a tameable animal** (a wild Hyena is the easiest first target).
-2. **Get its taming-food recipe.** Tameable creatures drop a recipe scroll when they die. Read the
-   scroll to learn the recipe.
+2. **Get its taming-food recipe.** Once you've learned the **Scatology** pet skill (bought from the
+   pet trainer — see [Skills](./skills.md)), tameable creatures drop a recipe scroll when they die.
+   Read the scroll to learn the recipe. (You can also stumble onto a recipe through Outward's freeform
+   cooking — see [Taming](./taming.md).)
 3. **Cook the taming food** ("chow") at a cooking pot from the recipe's ingredients.
 4. **Use the chow near a wild one** of that species. The wild creature becomes your pet.
 5. **Feed and bond.** Feeding restores its health and raises loyalty; a hungry, cold, or neglected pet

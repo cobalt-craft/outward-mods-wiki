@@ -17,8 +17,8 @@ When the pet is outside its band, discomfort escalates in stages the longer it s
 |---|---|---|
 | **Comfortable** | in band | No effect. |
 | **Uneasy** | 1 step | Loyalty decays faster (about 1.5×). |
-| **Suffering** | 2 steps | Faster decay (about 2×) **and** loses ~2% of max HP per minute. |
-| **Critical** | 3+ steps | Faster decay **and** loses ~6% of max HP per minute. |
+| **Suffering** | 2 steps | Loyalty decays faster (about 2×) **and** the pet loses ~2% of max HP per minute. |
+| **Critical** | 3+ steps | Same ~2× loyalty decay as Suffering, but the pet loses ~6% of max HP per minute. |
 
 Escalation isn't instant — the pet has to stay out of band for a sustained stretch to worsen a stage,
 and it recovers a stage after getting back into comfort. Both timings are tunable in the
