@@ -117,7 +117,28 @@ SkillRegistry.Register(new SkillSpec
 });
 ```
 
-For a passive, set `Passive = true`, omit `OnCast` and `CastAnim`, and use
+**Declining a cast.** By the time your delegate runs, the game has already charged the cost, played
+the animation and started the cooldown — so "this cast should not have counted" has to be said
+explicitly. Use `OnCastResult` (a `Func<Character, CastResult>`) instead of `OnCast`:
+
+```csharp
+OnCastResult = player =>
+{
+    if (NoPet) return CastResult.Refund;          // clears the cooldown next frame + logs one line
+    if (OnCooldownElsewhere) return CastResult.RefuseSilently;   // cooldown stands, kit says nothing
+    DoTheThing(player);
+    return CastResult.Landed;
+},
+
+// OPTIONAL: let the kit own the cooldown instead of the XML. Read fresh each sync, so a config
+// edit + reloadcfg retunes the live skill within ~2s — no relaunch, no consumer-side wiring.
+CooldownSeconds = () => MyConfig.GiftCooldownSeconds.Value,
+```
+
+`OnCast` keeps working exactly as before; set one or the other, not both (the kit warns and
+`OnCastResult` wins).
+
+For a passive, set `Passive = true`, omit `OnCast`/`OnCastResult` and `CastAnim`, and use
 `Icon = DynamicIcon.Fixed("<Name>.png")` — without a fixed icon the clone keeps the donor's icon in
 the trainer tree, skill menu, and learn toast.
 
@@ -134,9 +155,17 @@ the trainer tree, skill menu, and learn toast.
 | `SkillCooldowns.RefundNextFrame(itemId, player, tag, reason)` | Cancel a just-started cooldown next frame. |
 | `SkillVerbs.RegisterAll(registry, log, playerFn)` | Register SkillKit's dev verbs onto your command channel. |
 
-`SkillSpec` fields: `ItemId`, `Label`, `OnCast`, `Passive`, `Icon` (a `DynamicIcon`), `CastAnim`
-(a `Func<Character, CastPick>`), `ClearCastAfter` (the stuck-cast self-heal, on by default), and
-`ResourceAssembly` (where the icon PNGs are embedded — defaults to your DLL).
+| `SkillRegistry.SyncCooldowns(player)` | Re-stamp every spec's `CooldownSeconds`; also runs on the kit's own ~2s tick. |
+
+`SkillSpec` fields: `ItemId`, `Label`, `OnCast`, `OnCastResult` (the refusable form), `Passive`,
+`Icon` (a `DynamicIcon`), `CastAnim` (a `Func<Character, CastPick>`), `CooldownSeconds` (a
+`Func<float>` — kit-owned, live-retunable), `ClearCastAfter` (the stuck-cast self-heal, on by
+default), and `ResourceAssembly` (where the icon PNGs are embedded — defaults to your DLL).
+
+`SkillRegistry.Init(log, coroutineHost)` is first-caller-wins: SkillKit's own plugin wires it (it is
+every consumer's hard dependency, so it always loads first), and a later `Init` logs
+`Init ignored — already wired by …` and discards its arguments. That means a second consumer's kit
+lines are logged under the first one's mod name — expected, and now said out loud.
 
 ### The trap table
 
@@ -191,6 +220,63 @@ Icons are 160×160 PNGs with any wording baked into the sprite. Embed them in yo
 
 Sprite names are suffix-matched against your assembly's resource manifest, so folder prefixes don't
 matter.
+
+Whatever loads a PNG at runtime must call **`SkillKit.IconPin.Pin(...)` on BOTH the `Texture2D` and
+the `Sprite`**. An unpinned sprite is collected by `Resources.UnloadUnusedAssets` (which mods
+themselves call mid-session), and a dead status sprite does not fall back to "no art" — it falls
+back to the clone donor's badge, so a pet-hunger indicator silently becomes vanilla *Bleeding*.
+That invariant was learned twice independently; it is stated once, in `IconPin`.
+
+## Custom status effects — `SlStatus`
+
+Ship an indicator/timer status of your own (a HUD badge for your mod's state, a stacking buff, a
+timed boon) by cloning a plain vanilla status. Added 2026-07-26, lifted out of Beastwhispering,
+which had three of these; it lives here because it is deeply SideLoader-typed, exactly like the
+skill registration this kit already owns. **Built, not yet live-verified in kit form** — behaviour
+is the shipped BW mechanism verbatim (regression row: `docs/status-icons-testplan.md` V15).
+
+Bind the consumer context once at boot, then register from your `SL.OnPacksLoaded` handler:
+
+```csharp
+SlStatus.Log = Logger;                                  // warnings name YOUR mod
+SlStatus.DefaultIconLoader = (png, tag) =>              // the PNGs live in YOUR DLL
+    IconPin.Pin(CustomTextures.CreateSprite(myTexture(png), CustomTextures.SpriteBorderTypes.NONE));
+
+var spec = new SlStatusSpec {
+    Id = "MY_Badge", NumId = 91009900, Name = "Watched", Description = "Something is watching.",
+    Lifespan = -1f,                    // -1 = permanent indicator; > 0 = a real countdown
+    IconPng = "MyBadge.png", IsMalus = true,
+    Tag = "[MYMOD]", DisabledSuffix = "the badge is disabled.",
+    // BindFamily = <SL_StatusEffectFamily>  // REQUIRED for a STACKING status — see below
+};
+if (SlStatus.ResolveDonor(spec, out string donor))
+    SlStatus.Register(spec, donor, out StatusEffect prefab);
+```
+
+| Member | Purpose |
+|---|---|
+| `SlStatus.ResolveDonor(spec, out donor)` | Probe `DonorCandidates` (default Bleeding→Burning→Poisoned). Call ONCE per set and reuse the donor, so a miss warns once, not N times. |
+| `SlStatus.Register(spec, donor, out prefab)` | Clone + strip + stamp. Silent on success (log your own evidence line); `false` = the prefab was missing after `ApplyTemplate`. |
+| `SlStatus.Live(player, id)` | The player's live instance, or null. **Also converges the icon** — every read path goes through here. |
+| `SlStatus.StackCount / AddStack / Remove` | The obvious ops on the live instance. |
+| `SlStatus.RefreshAll(player, id, seconds)` | Reset every running stack's clock so the set expires together (vanilla decays per stack). |
+| `SlStatus.SetStacks(player, id, n, seconds, canAdd)` | Converge to exactly `n` stacks, then refresh. `canAdd` = your registration latch. |
+| `SlStatus.AddOrRefresh(player, id, seconds)` | Single-instance grant, idempotent. |
+| `SlStatus.SyncDuration(id, seconds)` | Live retune: re-stamp the duration onto the prefab. |
+| `SlStatus.IconHeld(id)` / `IconState(id, live)` | Boot-line and dump-verb readbacks — `use=False` IS the reason a player sees the donor badge. |
+| `SlStatus.EnsureIcon(id, live, tag)` | Re-assert the art; call it from your tick when you already hold the instance. True only when it actually repaired something. |
+| `SlStatus.ResetIconRetries()` | Clear the negative cache. Wire it to your config-reload verb. |
+
+What the kit does for you, and why each one is load-bearing:
+
+| Guard | What it prevents |
+|---|---|
+| The FX strip runs **unconditionally** inside `Register` (not a spec option) | A clone inherits its donor's `FXPrefab`, which is instantiated but never bound to a mesh — one `zero surface area` log line **per frame for the status's whole life** (measured: 111 k lines in one session). It also closes the `FxInstantiation`/`SpecialFXPrefab` back doors, and refuses to strip if SideLoader handed back the SHARED donor prefab. |
+| `Tags = new string[0]` | Without it the clone inherits the donor's tags and `StatusEffect.Start()` re-derives `m_defaultStatusIcon` from them: a missing icon then renders as *Bleeding*, not as nothing. Cleared, failure degrades to a blank slot. |
+| Icon stamp is **convergent**, into BOTH `OverrideIcon` and `m_defaultStatusIcon` | The prefab-side stamp does not survive `Start()` on live instances, and a sprite can be destroyed mid-session. Repairs self-heal within a tick. |
+| Bounded icon retry + negative cache | A genuinely missing PNG would otherwise warn on every read (`Live` is on the read path) forever. It gives up per id, loudly, once — and `ResetIconRetries` re-arms it after a rebuild. |
+| `ActionOnHit = None` | The Bleeding donor reduces its own stack when hit; an indicator must not. |
+| `BindFamily` + `FamilyMode.Bind` | Without a bound StackAll family, SideLoader auto-creates a `MaxStackCount=1` family for a renamed clone and a second grant OVERRIDES instead of stacking. |
 
 ## See also
 

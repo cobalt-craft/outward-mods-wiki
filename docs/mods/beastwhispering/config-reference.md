@@ -113,6 +113,7 @@ cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispe
 | `DefenseLoyaltyFactor100` | `1` | Pet defense multiplier at loyalty 100. |
 | `SpeedLoyaltyFactor0` | `1` | Pet movement-speed multiplier at loyalty 0. |
 | `SpeedLoyaltyFactor100` | `1` | Pet movement-speed multiplier at loyalty 100. |
+| `ReleaseConfirmLoyaltyThreshold` | `0` | At or above this loyalty, releasing the pet must be **confirmed**: the first Release Pet cast (or `release` verb) only warns and arms a 30-second window; a second cast inside it — at least a second later, so a double-press or a batched command file cannot confirm itself — or an explicit `release confirm`, actually ends the bond. `0` = always confirm. A negative value disables the guard. |
 
 `HungerSecondsPerDay`, `TempEscalateSeconds` and `TempRecoverSeconds` are baked into the sim at pet
 creation — a live change applies only to the next tame/reload.

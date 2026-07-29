@@ -8,7 +8,7 @@ sees. Players get companions through the mods built on it, [Beastwhispering](../
 
 **At a glance**
 - Type: reusable library (kit) — the mid-tier "companion spine"
-- Requires: BepInEx 5 (Mono branch), [ForgeKit](./forgekit.md), [AggroKit](./aggrokit.md), [NetKit](./netkit.md). No SideLoader.
+- Requires: BepInEx 5 (Mono branch), [ForgeKit](./forgekit.md), [DonorKit](./donorkit.md), [AggroKit](./aggrokit.md), [NetKit](./netkit.md). No SideLoader.
 - Config: `BepInEx/config/cobalt.companionkit.cfg`
 - Commands: `BepInEx/config/ck_cmd.txt`
 
@@ -50,52 +50,32 @@ re-acquires a fresh body from its saved species + captured attributes.
 - **Nearby wild** — clone a creature standing next to the player.
 - **Donor harvest** — no wild source needed. Any area is an ordinary scene that can be loaded
   *additively* in the background (~1 second), its baked creatures wake up as live instances, one is
-  cloned, and the scene is unloaded. `DonorHarvest` wraps this whole recipe plus the audio-registry,
-  Photon-view-collision and mid-harvest-save guards that make it survivable. A species→scene table
-  ships embedded and is config-overridable.
+  cloned, and the scene is unloaded. This is **[DonorKit](./donorkit.md)**'s engine: `DonorHarvest`
+  wraps the whole recipe plus the audio-registry, Photon-view-collision and mid-harvest-save guards
+  that make it survivable, and a species→scene table ships embedded there and is config-overridable.
+  It became its own kit in 2026-07 so SpawnKit no longer depends on the pet library for creature
+  supply; CompanionKit still drives it, and `CompanionKit.DonorHarvest` remains as a forwarder.
 - **Expeditions** — for creatures that live *only* out in an open-world region or town. Those scenes
   are too large to load additively (it crashes), so instead an expedition makes a **real round trip
   through the vanilla loading screen** to the region, batch-captures a dormant body *template* for
   every species that scene can donate, and returns the party to where it started. Paid once, those
-  creatures are available (load-free) for the rest of the session — and the capture can be persisted
-  and warmed automatically (see *Expeditions* below).
-
-## Expeditions
-
-Most companions are cheap to source: their donor scene loads additively on demand. Open-world regions
-and towns can't be loaded that way, so a creature that lives only in a region needs an expedition — the
-loading-screen round trip described above. The template it captures is cached for the session, and the
-kit can persist and pre-warm that cache so a region-only headline creature is ready before a fresh
-save's first reload.
-
-Expeditions are **host/offline only** and, by default, are refused while other players are connected
-(each leg ends in a per-machine "press any key" continue gate that can strand a co-op party mid-trip).
-
-**Manifest** — `BepInEx/config/ck_expeditions.txt` records every scene whose capture completed. Safe to
-edit or delete.
+  creatures are available (load-free) for the rest of the session. The whole tier — the trip state
+  machine, the template store, the boot warm and its `[Expedition]` config — is
+  **[DonorKit](./donorkit.md)'s** since 2026-07-26; CompanionKit still drives it (a bodiless pet
+  re-forms from the store in milliseconds) and the `expedition`/`templateclear` verbs still answer
+  on this kit's `ck_cmd.txt`.
 
 ## Settings
 
 `BepInEx/config/cobalt.companionkit.cfg`. Edit while the game is closed, or edit and run `ckreload`
 (BepInEx has no config file-watcher).
 
-### `[Expedition]`
-
-| Key | Default | Effect |
-|---|---|---|
-| `CaptureOnSceneEntry` | `false` | When on, entering an oversized region that still has uncached donor species runs the capture in place — zero loading screens, but it clones every uncached species on *every* such entry, so it's off by default. |
-| `AutoWarmAtBoot` | `needed` | Once-per-launch template warm at the first gameplay ready. `needed` = only when the active companion's species is region-only and has no cached body; `all` = re-warm every recorded scene with uncached species; `off` = never. |
-| `AlwaysWarmSpecies` | `Pearlbird` | Comma-separated species warmed at the same boot pass regardless of `AutoWarmAtBoot`'s mode (the packaging knob for a mod whose headline creature is region-only — a hand-off bundle can't ship a `.cfg`, so this ships as a code default). Only fires on a launch with no companion, or when the active companion's species is itself listed — a save bonded to another species never pays a boot trip it didn't ask for. Set empty to opt out. |
-| `AutoWarmRetrySeconds` | `60` | If a vanilla load is still in flight at boot, how long the auto-warm waits for the loader to settle before giving up. `0` = don't wait. |
-| `ReturnRetrySeconds` | `20` | Safety net for an expedition's return leg: re-request the trip home if no load has started this long after asking. `0` = never retry (the watchdog still applies). |
-| `AllowCoop` | `false` | Allow an expedition to start while guests are connected. Off by design — a stuck guest continue-gate can wedge the whole party. |
-| `GuestAutoContinue` | `true` | Guest-side safety: while a host-run expedition is in flight, auto-pass this client's continue gate. Inert in ordinary play. |
-
-### `[Rig]`
-
-| Key | Default | Effect |
-|---|---|---|
-| `RepairSkinnedBones` | `true` | Repair mesh bones that reference transforms outside the harvested creature's own hierarchy (they die with the donor scene and the body renders as a stretched line). `false` = log only. |
+> **Moved out (2026-07-26):** the `[Expedition]` and `[Rig]` sections now live in
+> `BepInEx/config/cobalt.donorkit.cfg` — see [DonorKit's settings](./donorkit.md#settings) for the
+> tables and an example. Entries left behind in this kit's cfg are inert; the defaults are
+> identical, and hand-tuned `[Expedition]` values should be re-applied in DonorKit's file. The
+> expedition manifest keeps its historical name (`ck_expeditions.txt`) so existing installs keep
+> their record.
 
 ### `[Effigy]` — co-op cosmetic bodies
 
@@ -122,14 +102,6 @@ guest's own companion when it re-forms with no creature nearby to clone.
 `BepInEx/config/cobalt.companionkit.cfg` — created on first launch. Excerpt:
 
 ```ini
-[Expedition]
-CaptureOnSceneEntry = false
-AutoWarmAtBoot = needed
-AlwaysWarmSpecies = Pearlbird
-
-[Rig]
-RepairSkinnedBones = true
-
 [Effigy]
 EnableCompanionEffigies = true
 MaxBodies = 4
@@ -137,7 +109,8 @@ MaxBodies = 4
 
 Dev commands run from `BepInEx/config/ck_cmd.txt`, and the species→scene donor table is
 config-overridable by dropping `BepInEx/config/DonorScenes.txt` (see *How it works*). The
-shared-settings overlay is `config/shared/cobalt.companionkit.cfg.overlay` (see `config/README.md`).
+expedition/rig settings live in [DonorKit's cfg](./donorkit.md#settings), and its shared-settings
+overlay is `config/shared/cobalt.donorkit.cfg.overlay` (see `config/README.md`).
 
 ## Commands
 
@@ -161,8 +134,10 @@ verb or `help` lists them all.
 
 ## For modders
 
-CompanionKit gives you every path to acquire a companion body and drive it; **you own persistence** (the
-save format) and your player-facing features (skills, feeding, UI).
+CompanionKit gives you every path to acquire a companion body and drive it — and, since 2026-07-26,
+the whole **persistence lifecycle** (when to save, when to re-form, the body-acquisition ladder — see
+*Persistence* below); **you own the state** (what a save row means, its codec/schema) and your
+player-facing features (skills, feeding, UI).
 
 Reference both DLLs from the kit's own folders — never copy them into yours:
 
@@ -176,10 +151,18 @@ Reference both DLLs from the kit's own folders — never copy them into yours:
 [BepInDependency(CompanionKit.Plugin.GUID, BepInDependency.DependencyFlags.HardDependency)]
 public class Plugin : BaseUnityPlugin
 {
+    CompanionHost _host;
+
     void Awake()
     {
-        CompanionRuntime.Log = Logger;
-        CompanionRuntime.DefaultSettings = new MySettings(); // ICompanionSettings over YOUR config
+        // ONE host handle per consumer (2026-07-26) — it carries your logger + your
+        // ICompanionSettings and derives your log-tag suffix from the GUID automatically
+        // ("cobalt.hireling" → "[ANCHOR/HIRE]" etc.; pass tagSuffix: "" for plain tags,
+        // combatTag: "…" to rename the combat component's log noun — default "COMBAT").
+        // The old CompanionRuntime.Log / DefaultSettings globals are obsolete one-wave shims:
+        // they had no ownership rule, so with two consumers installed BepInEx load order decided
+        // whose logger got all kit output. Don't set them.
+        _host = CompanionHost.Create(GUID, NAME, Logger, new MySettings());
     }
 }
 ```
@@ -188,9 +171,11 @@ Lifecycle — `Companion` is the aggregate whose lifetime is the *bond*, not the
 destroyed and rebuilt across zones and reloads; standing orders and anchor state must not):
 
 ```csharp
-var companion = new Companion();
+var companion = new Companion(_host);   // settings ride the host; a per-companion override is the 2nd arg
 companion.Anchor.OnAnchorDeath          += () => { /* your downed policy */ };
 companion.Anchor.OnAnchorCriticallyHurt += () => { /* warn the player */ };
+// (wire these BEFORE AdoptBody, or accept the one-time "[COMPANION] note: no anchor consequence
+//  events wired" line — a downed companion silently respawns after AnchorRespawnSeconds otherwise)
 
 // acquire a body (any route):
 CompanionBody body = BodyFactory.BuildPuppet(src, owner, consume: true);   // the wild source is consumed
@@ -198,8 +183,9 @@ CompanionBody body = BodyFactory.BuildPuppet(src, owner, consume: false);  // th
 // or, with no wild source present:
 //   yield return DonorHarvest.HarvestChain(scenes, species, owner, b => body = b, ...);
 
-// weld the anchor to the body and (optionally) enable combat:
-CompanionCombat combat = companion.AdoptBody(body, enableCombat: true);
+// weld the anchor to the body and (optionally) enable combat; humanoids may ask for the
+// draw/sheathe flourish here (it is an AdoptBody parameter, not a field to poke):
+CompanionCombat combat = companion.AdoptBody(body, enableCombat: true, weaponPosture: false);
 
 // push captured stats (idempotent — re-push any time; null clears back to defaults):
 companion.Anchor.ApplyVitals(maxHealth);
@@ -215,18 +201,266 @@ Key public surface:
 
 | Type | Role |
 |---|---|
-| `Companion` | The bond aggregate: `Body`, `Anchor`, `Stance`, `Combat`, and `AdoptBody(body, enableCombat)` which welds and wires them. |
+| `CompanionHost` | The per-consumer handle (create once in `Awake`): your logger + settings, an auto-derived log-tag suffix, the combat log noun. Everything the retired `CompanionRuntime` globals used to carry, with an owner. |
+| `Companion` | The bond aggregate: `Body`, `Anchor`, `Stance`, `Combat`, `AdoptBody(body, enableCombat, weaponPosture)` which welds and wires them, `Tick` (anchor upkeep **including the bodiless branch** — `ICompanionSettings.BodilessAnchor` decides destroy-vs-upkeep while no body exists), `Despawn()` (the **whole** teardown: anchor + body, stance reset), and `BindCapturedStats(get, set)` to route the capture slot through your save model. |
+| `CompanionTicker` | The shared sim driver: the 2 s cadence + the per-tick order contract (`Companion.Tick`, then your `ApplyAttributes` fan-out). `Due`/`Advance()` for a consumer with its own sim, `Run(...)` for one without; `Prime()`/`Poke()` are the reset idioms. |
+| `CompanionCandidate` | `IsBeast` / `IsHumanoid` — the engine's `UseLegacyVisual` discriminator, so tamable/recruitable predicates stop re-deriving it. |
 | `BodyFactory.BuildPuppet(src, player, consume, …)` | Clone + brain-strip a live creature into a `CompanionBody`. Consume mode replaces the wild one; no-consume leaves it alive. |
 | `CompanionBody` | The puppet: NavMeshAgent follow, zone re-placement, leash/warp, animator driving. Exposes `OnAfterMove` so subscribers run after the final pose is written. |
 | `CompanionAnchor` | The invisible combat body: HP, stat seams (`ApplyVitals`, `ApplyCreatureStats`), the `OnAnchorDeath` / `OnAnchorCriticallyHurt` events. |
 | `CompanionCombat` | Manual combat for a brain-stripped body: target selection (commanded > defend-the-anchor > assist-the-owner), typed damage profiles, and the public `DealDamage` / `DealDamageTyped` seam for consumer special attacks. Set profiles with `SetAttackProfile`. |
-| `AttributeCapture.From(character)` | Read a live `Character`'s real stats (resistances, health, natural weapon damage, movement) into a portable `Core.CreatureAttributes`. |
-| `DonorHarvest` | "Body anywhere": additively load any donor scene, clone, unload, with all the guards. |
-| `ExpeditionHarvest` / `BodyTemplateCache` / `ExpeditionOrchestrator` | Region-only creatures via a loading-screen round trip, plus the session template cache and the boot warm/persistence policy. |
+| `AttributeCapture.From(character[, host])` | Read a live `Character`'s real stats (resistances, health, natural weapon damage, movement) into a portable `Core.CreatureAttributes`. Pass your `CompanionHost` (also accepted as the optional trailing `host:` on `BuildPuppet`/`BuildHumanoidPuppet`/`BodyTemplateCache.Capture`) so the `[STATS]` capture line attributes to YOUR logger; null = the kit's. |
+| `DonorHarvest` | "Body anywhere": additively load any donor scene, clone, unload, with all the guards. **Now [DonorKit](./donorkit.md)'s**; the `CompanionKit.DonorHarvest` name is a forwarder, plus the two puppet-shaped overloads that genuinely belong to this kit. |
+| `ExpeditionHarvest` / `BodyTemplateCache` / `ExpeditionOrchestrator` | Region-only creatures via a loading-screen round trip, plus the session template cache and the boot warm/persistence policy. **Now [DonorKit](./donorkit.md)'s** (the store is `DonorKit.BodyTemplateStore`); these names are forwarders, except `BodyTemplateCache.PuppetFrom`/`ClearAllAndForgetMisses`, which are genuinely this kit's (the puppet build and the effigy-gate reset). |
+
+**Co-op (the `ck` NetKit channel).** `NetBus` is a thin facade over NetKit's `ck` channel; consumers
+register verb handlers and send with it rather than touching Photon. Two notes worth knowing:
+
+- `NetBus.Register(verb, handler, HandlerRole …)` declares the role constraint (master-only,
+  sender-must-be-master, no self-echo) instead of hand-writing the guard at the top of the handler —
+  a violation becomes a uniform `role:*` drop in `netdump`, and a FORGOTTEN guard becomes impossible.
+- `NetBus.SendToActor(actorId, verb, ownerUid, payload)` sends to one peer **by actor id**. Prefer it
+  over `SendToPlayer` whenever you already hold an id (a proxy row's owner, a peer-ready flush
+  target): it drops the `PhotonPlayer` round trip, and an actor that has left is NetKit's uniform
+  `actor-gone` drop rather than a consumer-side warning.
+- `NetBus.RegisterStore(name, StoreOptions)` registers a NetKit ReplicatedRecord store on the `ck`
+  channel. Two lifecycles ride stores since 2026-07-26, wire bytes byte-identical to the pre-store
+  builds in both cases (old and new builds interoperate):
+  - the **effigy identity lifecycle** (`effigy`, `StoreAuthority.Owner`, the shipped
+    `ck.effigy.set`/`ck.effigy.clear` verbs). The store owns the announce latch (change / ~30 s
+    periodic), the late-join replay, room-change and peer-lost teardown, and the role guards;
+    `Core.EffigyLedger` keeps only what a row *means* (species, tier, stance, anchor/body state).
+    The stance mirror stays a separate `StateMirror` beside it.
+  - the **guest-pet proxy lifecycle** (`proxy`, `StoreAuthority.Master`, the shipped
+    `ck.proxy.announce`/`ck.proxy.release` verbs — the 4C migration). The store owns
+    sender↔owner binding (`ProxyPets`' ownership rungs became its `ResolveUidOwner` callback),
+    the reconnect rebind rule, the 45 s owner-missing backstop, disconnect/room teardown and
+    release authorization; `ProxyPets` keeps only what a row means — a **bodiless `Companion`
+    aggregate** (policy `BodilessAnchor=UpkeepAnchor`) whose anchor follows the guest's replica,
+    the stats/combat/stance verbs (still hand verbs, authorized against the store row's bound
+    actor), and the M→G event surface. The non-record verbs' guest half is the **injected
+    `ICompanionNetMirror` seam** (below).
+
+**Guest net mirror (D3, 2026-07-26).** `CompanionCombat` no longer knows the `ck.proxy.*` protocol:
+its target/stance mirroring and hit replay go through an injected `ICompanionNetMirror`. The
+consumer that speaks the proxy protocol sets the bond's factory once —
+`companion.NetMirrorFactory = ProxyPets.NewGuestMirror;` (Beastwhispering's `Pet` ctor) — and
+`AdoptBody` wires a fresh mirror per body. A consumer that never sets it (Hireling) sends **no**
+proxy bytes at all, which is what closes the dual-install hijack: previously every consumer's
+companion body carried the mirrors and a second consumer's follower could drive the pet protocol.
+Relatedly, the bond's `CombatMandate` seam (`Companion.CombatMandate`) injects "is this fight
+mandated?" into the anchor's convergent re-calm — null means the local rule (mandate ⇔ engaged
+stance); `ProxyPets` wires its guest-instructed-lock validation there.
+
+**Effigy extensibility (2026-07-26).** Two consumer seams on the cosmetic-body layer:
+
+- `CompanionEffigy.BodySettingsFactory` — set it to a `species => new MyEffigySettings(species)`
+  factory to adjust effigy **body construction**: `EffigyBodySettings` is public
+  (`CompanionSettingsDefaults` subclass; defaults pin the beast yaw at 180° and tag logs
+  `[PUPPET/EFFIGY:<species>]`), and every `ICompanionSettings` member is overridable. A throwing or
+  null-returning factory falls back to the kit default with a warn-once — never a bodiless effigy.
+- The `ck.effigy.set` payload carries an **opaque third-field extension**
+  (`NetProtocol.BuildEffigySet(species, tier, extension)` / the 4-out `ParseEffigySet`; it lands on
+  `EffigyRow.Extension`). Empty appends nothing — the wire stays byte-identical — and every shipped
+  parser ignores fields past the tier, so a future consumer field cannot break an old peer. The
+  extension is the raw remainder (it may carry tabs); framing inside it is the consumer's.
 
 `CompanionKit.Core` is a game-reference-free, unit-tested compute layer: weld policy, target selection,
-the attribute codec (`CreatureAttributes.Flatten` / `Parse` is one save-safe string), the donor table,
-and the expedition manifest and warm policy.
+the **follow policy** (`FollowPolicy` — the whole `CompanionBody` drive ladder: zone re-place vs
+direct-drive vs normal following, plant/leash/grace rules, every threshold a named `FollowTuning`
+field), the attribute codec (`CreatureAttributes.Flatten` / `Parse` is one save-safe string), the donor
+table, and the expedition manifest and warm policy.
+
+**Mount seams (2026-07-26).** Two `ICompanionSettings` knobs exist for a consumer whose owner *rides*
+the body (a mount mod) instead of being followed by it. Both default to today's behavior, so an
+ordinary companion consumer never touches them:
+
+| Knob | Default | What `false`/`true` buys a mount |
+|---|---|---|
+| `AnchorEnabled` | `true` | `false` = `Companion.Tick` skips anchor upkeep entirely — no ghost anchor is spawned, welded, or leashed. The bond runs anchor-less; the consumer owns combat embodiment (or has none). |
+| `SuppressLeashWarp` | `false` | `true` = the follow policy never re-places or warps the body on **owner distance** (the >50 m zone trigger, the leash `TryWarp`, and the latched backstop) — a ridden body positions itself. The `!isOnNavMesh` re-place is kept: that half re-binds the agent to *a* navmesh and has nothing to do with owner distance. |
+
+Related: `CompanionBody.LeashDistance` is genuinely honored at the zone trigger — the re-place fires at
+`max(50, LeashDistance)`, so raising the leash past 50 m raises the zone trigger with it (the shipped
+default of 14 resolves to exactly the historical 50).
+
+**Honest strikes (`StrikeJudge`, 2026-07-26).** A companion's special attack, a scripted execute or
+any other *synthesized* hit bypasses the physics pipeline, so without a judge it always connects —
+blocks and dodge rolls would be meaningless against it. `CompanionKit.StrikeJudge` samples the target
+at the moment the hit would land and rules on it, mirroring the engine's own connect rules:
+
+```csharp
+StrikeOutcome outcome = StrikeJudge.Judge(attackerPos, attacker.forward, target,
+                                          maxRange: 4.5f, coneDegrees: 100f);
+if (outcome == StrikeOutcome.Blocked)
+    StrikeJudge.PlayBlock(target, source: myWeaponOrBody, damage, dir,
+                          angleFromTargetForward, dealer, log: Log.LogMessage);
+```
+
+- Outcomes are `Landed` / `Blocked` / `Dodged` / `OutOfRange` / `OutOfAngle` / `Missed` — the check
+  order picks the most useful reason, not engine chronology.
+- A block needs the target facing you: 60° from its forward, 80° with a shield, strict less-than —
+  the vanilla numbers. Dodge i-frames are physical (a rolling character's hitboxes are switched off),
+  which `HitboxesAllInactive` reads directly; bodies with no hitbox rig fall back to the dodge flag.
+- `maxRange <= 0` skips the range check (a projectile impact is already physical); `coneDegrees` of
+  0 or 360 skips the facing check.
+- `PlayBlock` expresses a judged block through the engine's own verb, so it produces the real thunk,
+  stagger and FX while dealing nothing. **`source` must be a live MonoBehaviour** — the engine
+  dereferences it for the FX position — and a blocking creature with no weapon of its own can throw
+  inside the vanilla body, which is caught and reported to your `log` sink rather than escaping.
+- The rules themselves are pure and unit-tested in `CompanionKit.Core.StrikeJudge`, so a consumer can
+  judge sampled facts offline.
+
+### Persistence — `CompanionPersistence<TState>` + `CompanionSaveStore<TState>` + `BodyAcquisition`
+
+The companion save/re-form spine (lane 5B, 2026-07-26 — Beastwhispering's shipped machinery moved
+verbatim, rungs and policy parameterized). The split rule: **the kit owns the LIFECYCLE** — the
+sceneLoaded→player-ready state machine, the session-end teardown, the per-character file plumbing,
+the ONE cold-load identity funnel, and the body-acquisition ladder with its retry budget — and
+**the consumer owns the STATE**: `TState` is your schema, the codec is your hook, the kit never
+sees a field of it.
+
+```csharp
+// 1. The store: per-character files under BepInEx/config/<prefix><uid>.txt
+//    (BW: bw_pets_<uid>.txt via its SaveCodec; Hireling: hl_folk_<uid>.txt via FollowerCodec).
+//    Crash-safe atomic writes (.tmp + swap), stale-.tmp cleanup on load.
+var store = new CompanionSaveStore<MySave>(_host, "mymod_",
+    encode: s => MyCodec.Serialize(s),                    // null state must yield your empty form
+    decode: (content, path) => MyCodec.Deserialize(content, warn));
+
+// 2. The ladder: keeps a bodiless companion hunting for a body. Rung ORDER is fixed
+//    (expedition hold → your nearby rung → template cache → donor harvest → ghost stand-in once);
+//    each rung is opt-in, and the donor-harvest retry budget (60s cooldown, 3 retries/scene
+//    episode, 9 additive cycles/session — the LightProbes crash ceiling) is Core.HarvestPacing.
+var ladder = new BodyAcquisition(new BodyAcquisitionSpec
+{
+    Host = _host, Runner = this, Noun = "follower",
+    Live = () => _mine?.Companion, Player = () => LocalPlayer,
+    SpeciesId = () => _mine?.Name, OnBodyBuilt = (body, isGhost) => Attach(body),
+    TryBuildNearby = p => FindAndClone(p),                // your rung 1; null = miss, falls through
+    UseTemplateCache = false, UseDonorHarvest = false, UseGhostStandIn = false,
+});
+
+// 3. The spine: forward SceneManager.sceneLoaded to it; hooks run in a fixed pipeline order
+//    (per-scene resets → [gameplay] player-ready wait → owner-mismatch guard → OnBeforeLoad →
+//    cold-load funnel OR OnInSessionArrival → OnAfterLoad → ladder kick; [main menu] OnSessionEnd
+//    → teardown with save files untouched).
+_persistence = new CompanionPersistence<MySave>(new CompanionPersistenceSpec<MySave>
+{
+    Host = _host, Runner = this, Noun = "follower", Store = store,
+    LocalPlayer = () => LocalPlayer, HasLive = () => _mine != null,
+    LiveBody = () => _mine?.Body, LiveOwnerUid = () => _mine?.OwnerUid,
+    LiveSpeciesId = () => _mine?.Name, TeardownLive = p => TeardownLive(),
+    SavedIdentityError = (saved, uid) => Validate(saved),   // non-null = REFUSED loudly, file kept
+    AdoptSaved = (saved, player) => AdoptBodiless(saved, player),
+    Acquisition = ladder,
+});
+void OnSceneLoaded(Scene s, LoadSceneMode m) => _persistence.OnSceneLoaded(s, m);
+```
+
+What the kit guarantees (all pure-tested in `CompanionKit.Core.ReformFlow`/`HarvestPacing`):
+
+- **Scene routing** — additive loads (donor harvests) are ignored entirely; the transition/
+  LowMemory shells between zones never tear the live companion down; ONLY the main menu is
+  session-end (DDOL bodies must not leak into the next character's session).
+- **The owner guard** — a live companion whose `OwnerUid` differs from the arriving player is torn
+  down (save untouched) before that player's own file loads.
+- **The cold-load identity gate** — every cold load funnels through your `SavedIdentityError`
+  validator; a refusal logs loudly under `[PERSIST]` and keeps the file (the data is the player's
+  bond — deleting is never the gate's call). BW's stand-in-species gate (F5) rides this seam.
+- **Ladder pacing** — the donor-harvest rung re-arms on a 60 s cooldown and immediately on a scene
+  change, fires for ghost stand-in bodies too (upgrading them is the point), and PARKS loudly when
+  the budget is spent. Spectral beats a crash.
+
+**Save triggers stay yours** — the kit never decides *what counts as a change* (BW's heartbeat +
+edge policy is `Beastwhispering.Core.SavePolicy` in its own tick; Hireling saves at recruit, zone
+arrival and quit-to-menu). Log lines emit through YOUR host's logger, so a consumer's grep
+contracts (BW's `[PERSIST]`/`[SAVE]` lines) survive the move byte-for-byte.
+
+Consumers today: **Beastwhispering** (all four rungs, `bw_pets_<uid>.txt`, behavior-identical to
+its pre-kit spine) and **Hireling** (Phase-2 v1: recruit survives relaunch — nearby rung only,
+`hl_folk_<uid>.txt`, position re-placed when reloading in the scene it was saved in).
+
+### A native menu tab — `MenuTabInjector` + `MenuPanelBase`
+
+Your companion needs a sheet somewhere. `MenuTabInjector` adds a real tab to the vanilla character
+menu window (beside Inventory/Skills/…), with native LB/RB cycling, Esc-close and toggle visuals —
+no custom UI framework, no window of your own. Register a spec, subclass a panel, and add two
+Harmony patches; the tab machinery is the kit's, the content is entirely yours.
+
+```csharp
+private static readonly MenuTabSpec Tab = new MenuTabSpec   // ONE static instance — see below
+{
+    Label = "Companion",          // the tab button AND the window's section header
+    PanelType = typeof(MyPanel),  // must derive from CompanionKit.MenuPanelBase
+    Log = Plugin.Log,
+    Tag = "[MYTAB]",              // your log-line prefix
+};
+
+[HarmonyPatch(typeof(CharacterUI), "Awake")]
+internal static class UiAwakePatch
+{
+    [HarmonyPostfix] private static void Postfix(CharacterUI __instance)
+        => MenuTabInjector.Inject(__instance, Tab);
+}
+
+[HarmonyPatch(typeof(CharacterUI), nameof(CharacterUI.ShowMenu),
+    new[] { typeof(CharacterUI.MenuScreens), typeof(Item) })]
+internal static class UiShowMenuPatch
+{
+    [HarmonyPostfix] private static void Postfix(CharacterUI __instance, CharacterUI.MenuScreens _menu)
+        => MenuTabInjector.OnShowMenu(__instance, _menu, Tab);
+}
+
+internal class MyPanel : MenuPanelBase   // build your uGUI in an EnsureBuilt() from Show()
+{
+    public override void Show() { /* … */ base.Show(); }
+}
+```
+
+`MenuTabInjector.ShowFor(player, Tab)` opens it directly (the headless dev-verb driver);
+`TryGetScreen` hands back the synthetic screen id.
+
+Three things are load-bearing and were learned the hard way:
+
+- **The spec must be one long-lived static object.** The injector keys its per-`CharacterUI`
+  bookkeeping on the spec's identity, so a freshly-built spec per call would re-inject on every
+  `Awake`.
+- **The patches stay yours, not the kit's.** Injection is opt-in per mod, and your kill-switch keeps
+  working.
+- **Your panel must derive from `MenuPanelBase`.** Its `StartInit` walks the parent chain by hand to
+  find the `MenuPanelHolder` and `RegisterChildMenu`s itself. A from-scratch panel born INACTIVE can
+  never find its holder with `GetComponentInParent` — `UIElement.Show()` runs `Start()` *before*
+  activating the GameObject, and Unity 2020's `GetComponentInParent` skips inactive objects — and a
+  panel missing from the holder's census makes the holder close the **whole window** the instant the
+  previous tab finishes fading out.
+
+The tab index is taken from the arrays' CURRENT length rather than a hardcoded slot, so this
+composes with any other mod that grows the same arrays (Transmorphic does, via reflection).
+
+### Player stat buffs — `PlayerStatBuff`
+
+The "lay `StatStack`s on the owner, re-derive them every tick, survive the player Character being
+replaced" applier. Stat stacks are not game-saved and die with the Character on a zone change or
+reload, so the only correct shape is convergent: `Sync(player, desired)` no-ops while the same
+player already holds exactly `desired`, and re-lays everything on a fresh Character.
+
+```csharp
+private static readonly PlayerStatBuff _buff = new PlayerStatBuff();
+
+// each tick — the desired set is recomputed from live state, not remembered
+var want = new List<StatStackSpec> {
+    new StatStackSpec(stats.m_damageTypesModifier[0], "MyMod.Bond", 0.04f, multiplier: true, "Physical"),
+};
+StatBuffResult r = _buff.Sync(player, want, onSkip: s => Log.LogWarning($"unresolved {s.Label}"));
+if (r.Change != StatBuffChange.NoOp) Log.LogMessage($"applied {r.AppliedCount}"
+    + (r.SamePlayer ? "" : " (fresh player)"));
+```
+
+`Clear()` removes only *our* stacks (a stat someone else also writes keeps theirs), and is safe on a
+destroyed Character. `PlayerStatBuff.OurStack(stat, sourceId, mult)` is the `[ours +0.04]` readback
+for a dump verb — worth wiring, because it separates "we decided wrong" from "we wrote it wrong".
+Pass `retainOwnerWhenEmpty: false` if you want ownership claimed only when stacks are actually laid.
 
 **Consumer seams for the expedition tier:** set `ExpeditionOrchestrator.AutoWarmDeferred = true` in your
 `Awake` if you want to fire the boot warm yourself, after your own saved companion state is loaded, so

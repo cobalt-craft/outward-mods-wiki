@@ -102,9 +102,9 @@ Unknown verb or `help` lists them all.
 | `storynpcstatus <id>` | Full state for one NPC. |
 | `storynpcspawn <id> [here]` | Spawn an NPC at its placement, or `here` to place it two metres in front of you facing you. Master-only. |
 | `storynpcdespawn <id>` | Despawn a live NPC. Master-only. |
-| `storyreload` | Drop stale references and re-assert placements for the current scene. (Template *registration* stays boot-time — a new NPC needs a relaunch.) |
+| `storyreload` | Build any templates that were never built (the `EnableStory=false` recovery), drop stale references, and re-assert placements for the current scene. |
 | `selftest` | Run the StoryKit self-test (`[SELFTEST] PASS/FAIL … DONE`). |
-| `storyrecon` / `qeventdump` / `qeventadd` / `qeventset` / `qeventdel` / `qeventage` / `qeventlisten` | Quest-event recon verbs — exploratory tooling, not part of the NPC/trainer surface. |
+| `storyrecon` / `qeventdump` / `qeventadd` / `qeventset` / `qeventdel` / `qeventage` / `qeventlisten` | Quest-event recon verbs — exploratory tooling, not part of the NPC/trainer surface. The event-writing ones create **save-baked** quest events under the `bw.srecon.*` prefix; use a throwaway save. |
 
 ## For modders
 
@@ -169,6 +169,24 @@ NpcRegistry.Register(new NpcSpec
 });
 ```
 
+**A plain dialogue NPC** — a lore-giver, a flavour villager — is the same call with `Trainer` left
+out entirely:
+
+```csharp
+NpcRegistry.Register(new NpcSpec
+{
+    Id   = "mymod.villager",
+    Name = "Old Sten",
+    Placements = { new Placement("CierzoNewTerrain", x, y, z) },
+    Dialogue = new DialogueSpec
+    {
+        Greetings = { "Storm's coming. You can smell it." },
+        Choices = { Choice.Reply("weather", "How can you tell?", "Forty years on this rock.") },
+    },
+    // Trainer = null → no skill tree, no trainer panel; everything else is identical.
+});
+```
+
 Validate the tree offline in your own tests before it ever reaches the game:
 
 ```csharp
@@ -180,29 +198,46 @@ Assert.False(TreeLayout.HasErrors(issues));   // errors would refuse the NPC at 
 
 | Member | Purpose |
 |---|---|
-| `NpcRegistry.Register(NpcSpec)` | Register one NPC; call once from your `Awake`, before packs load. |
+| `NpcRegistry.Register(NpcSpec)` | Register one NPC; call once from your `Awake`. A registration arriving after pack-load builds its template on demand. |
+| `NpcRegistry.TemplatesBuilt` | Has the pack-load template build run? `false` means nothing is spawnable yet. |
 | `NpcRegistry.Find(id)` | Look up a registered `NpcSpec`. |
 | `NpcRegistry.TrySpawn(id)` | Spawn at the spec's placement (master-only, duplicate-safe). |
 | `NpcRegistry.SpawnAt(id, pos, rotY)` | Spawn at an explicit position/yaw. |
 | `NpcRegistry.Despawn(id)` / `Respawn(id)` | Remove, or remove-and-respawn at the (possibly retuned) placement. |
 | `NpcRegistry.StatusDump(idOrNull)` | Log template/placement/live state for one NPC or all. |
 | `TreeLayout.Validate(SkillTreeDef)` → `List<TreeIssue>` | Offline layout validation; pair with `TreeLayout.HasErrors(...)`. |
+| `SpecValidation.Validate(NpcSpec)` → `List<SpecIssue>` | Offline spec-shape validation (trainer optional, inconsistent trainer refused); pair with `HasErrors` / `FirstError`. |
 
 Core data types: `NpcSpec`, `Placement`, `TrainerSpec`, `DialogueSpec`, `Choice` (with
-`Choice.Train` / `Choice.Reply` factories), `SkillTreeDef`, `SlotDef`.
+`Choice.Train` / `Choice.Reply` factories), `SkillTreeDef`, `SlotDef`, `SpecIssue`.
 
 ### Notes and limitations
 
 - **One placement per NPC.** A spec can hold several `Placement`s, but the director uses the first;
   conditional/rotating placement is not implemented.
-- **Trainer NPCs only.** A spec must carry a `TrainerSpec` with a tree; a plain
-  dialogue-only NPC is refused at build.
-- **No Train choice → unreachable tree.** If the dialogue has no `Choice.Train`, the skill tree can't
-  be opened in conversation (StoryKit warns).
-- **Registration is boot-time.** An `NpcRegistry.Register` that arrives after packs have loaded is
-  rejected — new NPCs need a relaunch. `storyreload` only re-asserts placement, not registration.
+- **A trainer is optional.** Leave `NpcSpec.Trainer` null for a plain dialogue NPC — a lore-giver,
+  a flavour villager, a quest-giver stub. It gets the same rig, placement, look-follow, pin and
+  ground-snap; it just sells nothing, and any `Choice.Train` in its dialogue is dropped with a
+  warning rather than rendered as a dead menu entry. What *is* refused is an inconsistent trainer:
+  a `TrainerSpec` with no `Tree` or no `SkillTreeUID` could never open a usable window.
+- **No Train choice → unreachable tree.** If a *trainer* spec's dialogue has no `Choice.Train`, the
+  skill tree can't be opened in conversation (StoryKit warns).
+- **Validate the spec offline.** `SpecValidation.Validate(spec)` (pure `StoryKit.Core`, no game
+  needed) returns the same warn/error matrix the kit applies at build; `SpecValidation.HasErrors` /
+  `FirstError` give you the refusal reason in your own unit tests.
+- **Registration before packs load is the normal path**, and the one to prefer — register from your
+  `Awake`. A `Register` that arrives *after* SideLoader's packs have loaded is no longer rejected:
+  StoryKit builds and applies that one template on demand, so a mod can add an NPC in response to a
+  game event. (SideLoader templates can be applied any time after pack-load.)
+- **The kill-switch is recoverable.** Booting with `[Story] EnableStory=false` builds no templates
+  at all. Turning it back on and running `storyreload` builds them then and there; a spawn attempt
+  made while it's off names the kill-switch explicitly rather than blaming SideLoader.
 - **No quest engine.** Dialogue choices are Train and Reply only; there is no choice kind that fires
   a quest/story event, and no quest state model.
+- **The recon verbs write save-baked event UIDs.** `qeventadd` and friends create real quest events
+  under the `bw.srecon.*` prefix — a Beastwhispering-flavoured name kept deliberately, since
+  renaming it would orphan events already written into existing saves. They are exploratory tooling:
+  use them on a throwaway save, not on one you care about.
 
 ## See also
 

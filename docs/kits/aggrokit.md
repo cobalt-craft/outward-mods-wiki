@@ -126,6 +126,8 @@ AggroKit uses the command channel **only** — it deliberately does not adopt Fo
 
 Dev-staged overrides and controls (`feud`, `shieldme`, `decoy`, …) are cleared automatically on a
 real zone or town transition, so nothing you stage in a test session leaks into normal play.
+Only *dev-staged* state is swept — a control a mod installed under its own owner tag survives; see
+[ownership and what survives a scene load](#ownership-and-what-survives-a-scene-load).
 
 ## For modders
 
@@ -169,8 +171,40 @@ foreach (CharacterAI ai in AggroTools.AisInRange(center, radius,
     …
 ```
 
-There is no dedicated "Taunt(one enemy)" call — a hard aggro pull on a single AI is just
-`ForceTarget(ai, holder)`; `Taunt` is the radius sweep on top of it.
+`AggroTools.Taunt` is a one-shot radius sweep. For a taunt that *holds*, see below.
+
+### Sustained taunts (`TauntController`)
+
+A set lock can be stolen back — a hurt AI re-rolls its target, block-retargeting happens, and squads
+hand out preferred targets — so pinning one enemy onto one character for a duration is a re-assert
+loop, not a single call. `AggroKit.TauntController` is that loop: it re-asserts every 0.3 s, which
+out-paces the AI's own 0.5 s target re-poll, so a steal is corrected before the AI acts on it.
+
+```csharp
+// Pin `enemy` onto `myAnchor` for 8 seconds; release it if the enemy gets further than 30 m away.
+TauntController.Hold(protect: myAnchor, enemy: enemy, seconds: 8f,
+                     leashMeters: 30f, owner: MyOwner, log: Log.LogMessage);
+
+TauntController.ReleaseOwnedBy(MyOwner, "teardown");   // drop just yours
+TauntController.ReleaseAll("restore");                 // the hammer: every owner
+bool mine = TauntController.CountOwnedBy(MyOwner) > 0;
+string forensics = TauntController.ForensicsFor(MyOwner);
+```
+
+- **One hold per protected character.** A second `Hold` for the same character replaces its hold;
+  other characters' holds stand, so a host simulating several companions can't have one stomp another.
+- **The leash is your policy, not a kit setting.** `leashMeters` is a parameter because the distance
+  law belongs to whoever owns the body being defended; `<= 0` disables the rule entirely.
+- **Releases:** duration expiry, the enemy dying or vanishing, the protected character going down,
+  the leash, or an explicit release. A release only *stops asserting* — it never forces a calm, so the
+  enemy simply fights whoever the vanilla rules pick next.
+- **Ownership** follows the same rule as everything else below: `DevOwner` holds are swept at each
+  non-additive scene load, yours survive, and `ReleaseAll` drops everything.
+- AggroKit ticks the loop itself; a consumer may tick it too (`TauntController.Tick()` is clock-gated,
+  so a second call in the same frame asserts nothing extra).
+
+Accepted limitation: squad tactics can re-race the hold in pack fights — it is a sticky suggestion,
+not an absolute.
 
 ### Targetability overrides
 
@@ -179,9 +213,10 @@ There is no dedicated "Taunt(one enemy)" call — a hard aggro pull on a single 
 attackable or not, without changing factions:
 
 ```csharp
-TargetableOverrides.Set(attacker, target, targetable: true);   // this pair may fight
-TargetableOverrides.SetForAll(target, targetable: false);      // nobody may target `target`
-TargetableOverrides.ClearAll();
+TargetableOverrides.Set(attacker, target, targetable: true, owner: MyOwner);   // this pair may fight
+TargetableOverrides.SetForAll(target, targetable: false, owner: MyOwner);      // nobody may target `target`
+TargetableOverrides.ClearOwnedBy(MyOwner);   // tear down just yours
+TargetableOverrides.ClearAll();              // the big hammer: everything, every owner
 ```
 
 A `true` override only makes a pair *attackable* — it does not make the detection scan find them.
@@ -198,6 +233,49 @@ are always installed, alongside the veto/redirect/no-aggro *controls*, which lik
 `TargetChanged` and `StateChanged`, together with the `[AGGRO]` recording buffer, only fill when
 observation is armed (`[Research] EnableObservation`, or `aggrolog on`), since those taps are the
 ones that stay unpatched by default.
+
+```csharp
+AggroEvents.SetDetectionVeto(player, on: true, owner: MyOwner);
+AggroEvents.SetDetectionRedirect(from: player, to: myAnchor, owner: MyOwner);
+AggroEvents.SetNoAggroDealer(player, on: true, owner: MyOwner);
+AggroEvents.ClearControlsOwnedBy(MyOwner);
+```
+
+### Ownership and what survives a scene load
+
+Every control, every targetability override and every taunt hold carries an **owner tag**. AggroKit sweeps its own
+dev staging on each non-additive scene load (a zone change, a town door, a fast travel) — and only
+its own:
+
+- `owner` defaults to `AggroEvents.DevOwner` / `TargetableOverrides.DevOwner` (`"ak_cmd"`), the tag
+  the `ak_cmd.txt` verbs use. **DevOwner-tagged state is cleared at every scene load.**
+- Anything tagged with your own string is **retained across scene loads** and is yours to remove —
+  `ClearControlsOwnedBy(tag)` / `ClearOwnedBy(tag)`, or the un-set overload of the same call.
+- **The per-entry clears are ownership-BLIND.** `Clear(attacker, target)`, `ClearForAll(target)`,
+  `ClearDetectionRedirect(from)` and the `on: false` form of the `Set*` calls remove whatever is
+  registered for that character, whoever owns it — so a dev verb (`unshieldme`, `decoy off`,
+  `stealthme off`) can drop a consumer-owned entry for the same character. Ownership decides what
+  the *scene-load sweep* keeps, not who may remove a specific entry.
+- `ClearAllControls()` and `TargetableOverrides.ClearAll()` ignore ownership and drop everything;
+  they back the `restore` / `clearoverrides` verbs. Don't call them from a consumer unless you mean
+  to wipe other mods' state too.
+
+The sweep says what it did, so you can see your own state survive:
+
+```
+[AggroKit] scene 'CierzoNewTerrain' loaded (Single) -- cleared 2 dev-staged
+(overrides=1 controls=1 of (detectVeto=1 redirect=1 noAggroDealers=0)), retained 1 consumer-owned.
+```
+
+Pick a stable tag — your plugin GUID is the obvious choice:
+
+```csharp
+private const string MyOwner = "cobalt.mymod";
+```
+
+Two caveats that predate ownership and still hold: overrides and controls are keyed by
+`Character.UID`, which does not survive a save reload for every character class, and none of this
+state is persisted — re-install your controls when your own state re-initialises.
 
 ## See also
 

@@ -13,8 +13,8 @@ you. It's for players who want to stage fights, and for modders who want a one-l
 - Type: gameplay tool + reusable library (kit)
 - GUID: `cobalt.spawnkit`
 - Requires: BepInEx 5 (Outward's Mono branch), plus [ForgeKit](./forgekit.md),
-  [CompanionKit](./companionkit.md), [NetKit](./netkit.md), and [AggroKit](./aggrokit.md)
-  (CompanionKit pulls it in)
+  [DonorKit](./donorkit.md), [CompanionKit](./companionkit.md), [NetKit](./netkit.md), and
+  [AggroKit](./aggrokit.md) (CompanionKit pulls it in)
 - Config: `BepInEx/config/cobalt.spawnkit.cfg`
 - Commands: `BepInEx/config/SpawnKit_cmd.txt`
 
@@ -43,7 +43,7 @@ on **Esc**, on **F11** again, or when you open a vanilla menu.
 ### Installing
 
 Installing through a mod manager pulls in every dependency automatically. By hand, drop SpawnKit and
-its dependency kits — `ForgeKit/`, `AggroKit/`, `NetKit/`, `CompanionKit/`, `SpawnKit/` — side by side
+its dependency kits — `ForgeKit/`, `DonorKit/`, `AggroKit/`, `NetKit/`, `CompanionKit/`, `SpawnKit/` — side by side
 into `BepInEx/plugins/`. If BepInEx logs a dependency error and refuses to load SpawnKit, one of the
 others is missing. See [Installing](../installing.md) for the full setup.
 
@@ -55,8 +55,13 @@ creature out of it, gives the copy a fresh identity, drops it on solid ground ne
 the scene again. That's the 1–6 second pause on a cold spawn, and it's why the result behaves
 perfectly — it's the same creature the game itself would have spawned, not an imitation.
 
-The creature roster comes from **[CompanionKit](./companionkit.md)**, which owns the table mapping
-each species to the scenes it can be found in. `spawnlist` prints it. You can add or fix an entry
+The creature roster comes from **[DonorKit](./donorkit.md)**, which owns the table mapping
+each species to the scenes it can be found in — the harvest engine that fetches them, the expedition
+tier for region-only species, and (since 2026-07-26) the session **template store** SpawnKit's
+prewarm cache rides on: SpawnKit's templates live in the store's *spawn kind*, while all the spawn
+policy (normalization, the rig reject, the LRU cap) stays SpawnKit's. A third mod can even add a
+spawnable species without touching SpawnKit, via `DonorKit.TemplateStore.RegisterSpecies` /
+`RegisterTemplate`. `spawnlist` prints the roster. You can add or fix an entry
 without rebuilding anything by dropping a `DonorScenes.txt` into `BepInEx/config/`:
 
 ```
@@ -159,6 +164,11 @@ SpawnKit also registers ForgeKit's shared [CommonVerbs](./forgekit.md) pack on t
   *doesn't* have SpawnKit, in-room spawns refuse and the log names who, because to them the spawn
   would be an invisible ghost. `[Spawner] AllowSpawnInRoom=true` overrides that, knowingly; the whole
   co-op wire rides [NetKit](./netkit.md).
+- **⚠ Everyone in a co-op room needs the SAME SpawnKit build (0.4.0 or newer on all boxes).** The
+  0.4.0 co-op wire changed shape when the spawn lifecycle moved onto NetKit's replicated-record
+  store, and it is deliberately not backward compatible. Mixing 0.4.0 with an older build doesn't
+  half-work — the handshake reports the peer as incompatible and co-op spawning stays off toward
+  them, which is the intended outcome. Update everyone together and it's a non-event.
 - **A rare visual glitch.** Very occasionally, after a lot of spawning in one session, a patch of
   ground can go invisible (you can still walk on it) — changing zone and coming back repairs it.
 
@@ -202,6 +212,11 @@ Spawner.Spawn("Alpha Tuanosaur",
         CorpseLingerSeconds = 8f,                // death-anim time before the NoBody destroy
         OwnerTag = "mymod",                      // namespace your spawns (see DespawnAll)
         // StripQuestEvents = false,             // default true — leave it unless you KNOW
+        ConsumerData = "objective:3",            // opaque string; reaches co-op guests (below)
+        OnBeforeActivate = (go, ch) =>           // last touch before the creature wakes up
+        {
+            go.AddComponent<MyObjectiveMarker>();
+        },
     },
     onReady: handle =>
     {
@@ -222,8 +237,41 @@ The full surface (`SpawnKit.Spawner`, all static):
 | `CanMintNow(species)` | True if a spawn can mint a body right now, from either cache (prewarm or expedition) — the question UI actually wants. |
 | `IsExpeditionOnly(species)` / `IsExpeditionCached(species)` | Whether a species can only be stocked by an expedition, and whether one already has. |
 | `Expedition(species, onDone?, force=false)` | Go fetch an expedition-only species (party round trip, saves on each leg). Host/offline only. |
-| `Active(ownerTag=null)` | Snapshot of tracked handles (Pending + Alive). |
+| `Active(ownerTag=null)` | Snapshot of tracked handles (Pending + Alive). **Host-side** — on a co-op guest this is empty (see below). |
+| `Replicas()` | Snapshot of the mirrored creatures on THIS machine — the guest-side counterpart of `Active()`. Empty on the host/solo. |
+| `OnMirrored` | Event: fires on a guest each time a mirrored creature finishes arriving. |
 | `SpeciesKeys()` / `ResolvedDonorName(species)` | The spawnable roster, and the real donor creature a species key resolves to (once revealed). |
+
+### Two extension seams
+
+**`OnBeforeActivate(GameObject, Character)`** runs on the freshly built creature *before it wakes
+up* — after SpawnKit has finished stamping its identity, and before the game's own initialization
+runs. That ordering is the whole point: anything the creature's own start-up reads (a marker
+component you want present from frame one, a loot-table edit, an AI tweak) has to be in place
+*before* activation, because by the time `onReady` fires it is already a frame too late. Keep it
+cheap, don't activate the object yourself, and note that a throwing hook is logged and skipped —
+it never aborts the spawn. Host-side only.
+
+**`ConsumerData`** is an opaque string you attach to a spawn. In co-op, SpawnKit already mirrors
+your creature onto every guest for free — but until now the guest had no way to tell *which* of
+your creatures it was looking at, because delegates and object references cannot cross the
+network. `ConsumerData` can: whatever you put on it comes back on the guest, unchanged.
+
+```csharp
+// On a guest — find your own mirrored creatures.
+Spawner.OnMirrored += info =>
+{
+    if (info.ConsumerData == "objective:3") MarkObjectiveVisible(info.Uid);
+};
+
+foreach (ReplicaInfo r in Spawner.Replicas())
+    Log.LogMessage($"{r.SpeciesKey} {r.Uid} state={r.State} data='{r.ConsumerData}'");
+```
+
+`ReplicaInfo` is plain read-only data (uid, species, state, view id, your string) — deliberately
+*not* the `Character`. Guests observe mirrored creatures; the host drives them. Keep the string
+short: it travels with the creature every time the spawn is synchronized. A peer running an older
+SpawnKit simply ignores it, and a spawn from an older peer reads back as `""`.
 
 ### Trap table — read before shipping on this
 
@@ -241,12 +289,16 @@ The full surface (`SpawnKit.Spawner`, all static):
 | `StripQuestEvents = false` on a quest-flagged creature **fires real quest events on death** | The default (true) exists because live donors really do carry quest triggers — leaving it on is what keeps spawns from mutating quest state. |
 | `CorpsePolicy.NoBody` **destroys the loot bag with the body** | The corpse GameObject IS the loot container — never combine NoBody with a drop-loot expectation. |
 | Ring geometry (step angles, elevation band, navmesh snap) is **not configurable** | By design. If you need exact placement, pass `SpawnOptions.Position` and own the spot yourself. |
-| The species roster and creature supply are **CompanionKit's**, not SpawnKit's | An expedition-only species fails cold spawns until an expedition stocks it. |
+| The species roster and creature supply are **DonorKit's**, not SpawnKit's | An expedition-only species fails cold spawns until an expedition stocks it. |
+| `Active()` is **empty on a co-op guest** | It is the host's registry. A guest sees mirrored creatures through `Replicas()` / `OnMirrored`, which carry `ReplicaInfo`, not handles. |
+| `OnBeforeActivate` runs **before the creature is initialized** | Half the `Character` is not set up yet. Add components and edit data there; do anything that needs a *live* creature in `onReady` instead. |
+| `ConsumerData` is **not a channel** | It is a fixed label attached to one spawn, sent when that spawn is synchronized. It never updates in place — if the value must change over time, replicate that yourself. |
 
 ## See also
 
 - [Kits index](./README.md)
-- [CompanionKit](./companionkit.md) — owns the creature roster and body supply SpawnKit draws from
+- [CompanionKit](./companionkit.md) — the companion spine
+- [DonorKit](./donorkit.md) — the creature roster, harvest engine and template store; its expedition trips also stock bodies SpawnKit can adopt
 - [NetKit](./netkit.md) — the co-op layer host spawns replicate over
 - [ForgeKit](./forgekit.md) — the command channel and shared dev verbs
 - [Installing](../installing.md)

@@ -16,8 +16,9 @@ you install. This section is for **modders** building on them.
 | [SkillKit](skillkit.md) | ship a custom **learnable skill** (active or passive) | ForgeKit | yes (runtime) |
 | [StoryKit](storykit.md) | add an **NPC / trainer** with dialogue and a skill tree | ForgeKit | yes (compile) |
 | [EnchantKit](enchantkit.md) | apply vanilla **enchantments** and spawn pre-enchanted gear from a command (dev / testing tool) | ForgeKit | no |
-| [CompanionKit](companionkit.md) | give the player a **persistent creature companion** | ForgeKit, AggroKit, NetKit | no |
-| [SpawnKit](spawnkit.md) | **spawn creatures** at runtime as real vanilla enemies | ForgeKit, CompanionKit, NetKit | no |
+| [DonorKit](donorkit.md) | get a **live creature body** for any species, anywhere in the world | ForgeKit, NetKit | no |
+| [CompanionKit](companionkit.md) | give the player a **persistent creature companion** | ForgeKit, AggroKit, NetKit, DonorKit | no |
+| [SpawnKit](spawnkit.md) | **spawn creatures** at runtime as real vanilla enemies | ForgeKit, CompanionKit, NetKit, DonorKit | no |
 
 ## The layering
 
@@ -31,13 +32,15 @@ ForgeKit                      dev tooling — no dependencies
   ├── SkillKit                custom skills            (+ SideLoader)
   ├── StoryKit                NPCs / trainers          (+ SideLoader)
   ├── EnchantKit              enchant / spawn gear     (dev / testing tool)
-  └── CompanionKit            persistent companions    (needs ForgeKit + AggroKit + NetKit)
-        └── SpawnKit          runtime creature spawns  (needs CompanionKit + NetKit)
+  └── DonorKit                creature bodies anywhere (harvest engine + expedition tier + template store; needs ForgeKit + NetKit)
+        ├── CompanionKit      persistent companions    (needs ForgeKit + AggroKit + NetKit + DonorKit)
+        │     └── SpawnKit    runtime creature spawns  (needs CompanionKit + NetKit + DonorKit)
+        └── SpawnKit          also sits directly on DonorKit — its species roster IS the donor table
 ```
 
 Mods then combine these: [Beastwhispering](../mods/beastwhispering/README.md) uses ForgeKit, SkillKit,
-CompanionKit, AggroKit, NetKit, and StoryKit; [Hireling](../mods/hireling.md) uses ForgeKit,
-CompanionKit, AggroKit, and NetKit.
+CompanionKit, DonorKit, AggroKit, NetKit, and StoryKit; [Hireling](../mods/hireling.md) uses ForgeKit,
+CompanionKit, DonorKit, AggroKit, and NetKit.
 
 ## Conventions shared by every kit
 

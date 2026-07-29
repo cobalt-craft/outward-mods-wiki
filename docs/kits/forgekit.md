@@ -25,11 +25,12 @@ nothing on its own — install it because another mod declares it as a requireme
 |---|---|
 | `CommandChannel` + `CommandRegistry` | A file-driven dev-command loop: write a verb into `BepInEx/config/<yourmod>_cmd.txt` and it runs on the next poll. The poll runs on unscaled time, so it still fires while the game is paused. Unknown verb (or `help`) prints every registered verb with its help text. |
 | `VerbHost` / `VerbContext` | A thin wrapper over the registry that adds a per-verb prologue: resolve the local player, an optional Photon master-only gate, and a per-verb error tag. |
-| `SelfTestHarness` | The `[SELFTEST] BEGIN` / `PASS:` / `FAIL:` / `DONE pass= fail=` report shape — wire up a handful of `Check(name, condition)` calls and get one consistent, greppable self-test report. |
+| `SelfTestHarness` | The `[SELFTEST] BEGIN` / `PASS:` / `FAIL:` / `SKIP:` / `DONE pass= fail= skip=` report shape — wire up a handful of `Check(name, condition)` calls and get one consistent, greppable self-test report. Use `Skip(name, why)` (or `CheckIf(canRun, …)`) for a check that cannot run *here* — a selftest at the main menu should report `skip=`, not `fail=`. |
 | `Notify` | An on-screen info toast for the player, mirrored to the log so log-only sessions see it too. |
 | `Lifecycle` | `WhenPlayerReady` — a coroutine that waits until the player is actually placed on a gameplay scene (past the game's void/staging coordinates) before your mod starts touching it, plus `IsSanePosition` for the same check inline. |
 | `TableLoader<T>` / `EmbeddedRes` | Embedded-default-plus-config-override data tables: ship a sane default table inside your DLL, and let players override it by dropping a same-format file into `BepInEx/config/`. |
-| `Keybinds` | A cross-mod keybind registry: each mod claims its keys, and if two mods claim the same key ForgeKit logs a warning naming both claimants and where to rebind. |
+| `Keybinds` | A cross-mod keybind registry: each mod claims its keys, and if two mods claim the same key ForgeKit logs a warning naming both claimants and where to rebind. `IsFree(combo)` asks whether a candidate key is already claimed (useful when picking a default), and ForgeKit logs the full census once on the first frame of every boot, so any log pull carries it. |
+| `NameCandidates` | The "config carries names, the game carries the truth" ladder. Asset identifiers (status names, item names) can't be known offline, so a mod ships a comma-separated candidate list in config and this resolves it against the running game: first candidate the registry knows wins, cached on the raw config string so a config reload re-resolves. A list that resolves to nothing warns **once**, naming every candidate. Two modes: `Resolve()` when your target is a prefab you apply by name, and `TryValidate()` + `FindFirst()` when the live object is reachable — that second mode treats the registry as a typo check only and asks live state every call, which is the safer default when two variants of a name can both exist. A failed lookup is never cached, so a name registered late still resolves. |
 | `CommonVerbs` | A shared pack of generic dev verbs (item spawning, world/combat staging, engine diagnostics) any mod can register onto its own command channel. |
 
 ## The command channel
@@ -61,6 +62,7 @@ opt out of individually.
 | Combat | `sethp`, `combatclear`, `killnearest` |
 | Skills | `learnskill`, `unlearnskill`, `resetcooldowns` |
 | Engine diagnostics | `statusdump`, `scenedump`, `skydump`, `groundprobe`, `combatmgrdump`, `keybinds`, `ragdolldump`, `psdump` |
+| Config | `reloadcfg` (only when the consuming mod hands the pack its config file — see below) |
 
 A few highlights:
 
@@ -73,9 +75,26 @@ A few highlights:
   so a test save doesn't need a cheat menu.
 - `keybinds` — report every key claimed by every mod in the family, grouped by key, with conflicts
   flagged (see the keybind registry below).
+- `reloadcfg` — re-read that mod's `.cfg` from disk. BepInEx 5 has **no config file-watcher**, so a
+  hand-edited config does nothing until this verb runs (or the game relaunches). It registers only
+  when the mod supplies its config file, because `BaseUnityPlugin.Config` is `protected` — only code
+  inside the plugin class can reach it:
+
+  ```csharp
+  CommonVerbs.RegisterAll(verbs, Logger, new CommonVerbsOptions
+  {
+      ConfigSource = () => Config,             // enables `reloadcfg`
+      OnConfigReloaded = ApplySettings,        // optional: re-apply after the re-read
+  });
+  ```
+
+  A mod whose settings need more than a re-read (rebuilding caches, re-stamping live objects) either
+  passes `OnConfigReloaded` or keeps its own richer `reloadcfg` and excludes the pack's copy.
 
 Each mod chooses which domains it takes; a mod that ships its own richer version of a verb excludes
-the pack's copy and keeps its own.
+the pack's copy and keeps its own. `RegisterAll` logs one line naming the domains it enabled and the
+exclusions it honored, and warns about any exclusion that matched no verb — a typo in an exclusion
+would otherwise silently leave the pack's copy registered.
 
 ## Settings
 

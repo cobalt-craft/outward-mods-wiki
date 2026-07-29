@@ -11,6 +11,7 @@ for players who want a humanoid companion, and it is the human-follower counterp
 - Config: `BepInEx/config/cobalt.hireling.cfg`
 - Commands: `BepInEx/config/hl_cmd.txt`
 - Data: an embedded follower-stats table, overridable at `BepInEx/config/FolkStats.txt`
+- Save: your follower, per character, at `BepInEx/config/hl_folk_<character uid>.txt`
 
 ## For players
 
@@ -37,13 +38,21 @@ An NPC must be within **15 m** (configurable) to recruit. You can target a speci
 - `disengage` — stand down: the follower drops the fight and returns to you until you engage again.
 - `dismiss` — let the follower go. This tears it down completely.
 
+**Your recruit survives a relaunch (v1 persistence, 2026-07-26 — built, not yet live-verified).**
+The follower is remembered per character in `BepInEx/config/hl_folk_<your character uid>.txt`
+(written at recruit, on each zone arrival, and when you quit to the menu; `dismiss` deletes it).
+On your next launch, the follower re-forms when you are in a scene that holds a live NPC with the
+same name — typically the town you recruited them in — and steps back in at the spot they were
+last saved. Their stats re-read from the live NPC, exactly like a fresh recruit.
+
 **What it can't do yet**
 
-- **Followers are recruited during a session; saving and reloading the game does not yet restore
-  them.** A recruited follower lives until you dismiss it or the game session ends.
+- **Re-forming needs a live same-named NPC in the current scene.** Reload out in the wilds and the
+  follower waits (quietly) until you next enter such a scene. Their gear/stats are re-captured, not
+  frozen — a v1 trade-off.
 - **One follower at a time.** Recruit again after you have dismissed the current one.
 - **In co-op, only the host recruits and dismisses.** A guest who presses the key is told the host
-  handles followers.
+  handles followers; a guest's own reload never re-forms one.
 
 ## Features / How it works
 
@@ -135,9 +144,12 @@ Hireling is **CompanionKit consumer #2** — the reference *human*-follower buil
 Beastwhispering's beast pets. The companion spine (the humanoid puppet body, the welded combat
 anchor, follow, and stance) all come from [CompanionKit](../kits/companionkit.md); this mod owns only
 the parts that make it Hireling: the recruit policy (which characters qualify and why an ambient
-villager is rejected) and a human-stats layer (`FolkStats`) that merges a bandit-like table with the
-live NPC capture. It builds the follower body through the kit's humanoid puppet factory and drives it
-through the kit's `Companion` aggregate. Its command channel and the config-override table loader come
+villager is rejected), a human-stats layer (`FolkStats`) that merges a bandit-like table with the
+live NPC capture, and the v1 save schema (`Hireling.Core.FollowerSave` — name + last-saved
+scene/position). It builds the follower body through the kit's humanoid puppet factory, drives it
+through the kit's `Companion` aggregate, and rides the kit's persistence spine
+(`CompanionPersistence<FollowerSave>` + a nearby-rung-only `BodyAcquisition` ladder — see the kit
+page's *Persistence* section). Its command channel and the config-override table loader come
 from [ForgeKit](../kits/forgekit.md).
 
 ## See also

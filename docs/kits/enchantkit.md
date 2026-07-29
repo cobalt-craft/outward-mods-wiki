@@ -70,7 +70,12 @@ unique, so when two enchantments share a name the lowest PresetID is chosen.
 
 | Section | Key | Default | Effect |
 |---|---|---|---|
-| `Enchant` | `EnableEnchantKit` | `true` | Kill-switch. When `false`, the mutating verbs (`enchant`, `unenchant`, `giveenchanted`) refuse; the read-only diagnostics (`enchantlist`, `enchantdump`, `enchantregistry`) keep working. Live-flippable with `reloadcfg`. |
+| `Enchant` | `EnableEnchantKit` | `true` | Kill-switch. When `false`, the mutating verbs (`enchant`, `unenchant`, `giveenchanted`) refuse **and** the shared ForgeKit dev-verb pack is not registered at all; the read-only diagnostics (`enchantlist`, `enchantdump`, `enchantregistry`) keep working. The mutating verbs read the setting live, so `reloadcfg` flips them with no relaunch; the dev-verb pack is registered at startup, so restoring it needs a relaunch. |
+
+> **Installing EnchantKit with the kit enabled exposes the shared dev-verb pack on
+> `EnchantKit_cmd.txt`** — `give`, `drop`, `equip`, `teleport`, `goto`, `givemoney`, `killnearest`,
+> `learnskill` and the engine dumps. That is a dev console, not just an enchanting tool. Set
+> `EnableEnchantKit = false` (and relaunch) on an install where that surface is not wanted.
 
 ### Example configuration
 
@@ -78,8 +83,11 @@ unique, so when two enchantments share a name the lowest PresetID is chosen.
 
 ```ini
 [Enchant]
-## Kill-switch: false refuses enchant/unenchant/giveenchanted (the mutating verbs).
-## The diagnostics (enchantlist/enchantdump/enchantregistry) keep working. Live via reloadcfg.
+## Kill-switch: false refuses enchant/unenchant/giveenchanted (the mutating verbs) and does not
+## register the shared ForgeKit dev-verb pack (give/equip/teleport/killnearest & co). The read-only
+## diagnostics (enchantlist/enchantdump/enchantregistry) keep working. The mutating verbs read this
+## live, so 'reloadcfg' flips them without a relaunch; the dev-verb pack is registered at boot, so
+## adding it back needs a relaunch.
 EnableEnchantKit = true
 ```
 
@@ -104,7 +112,8 @@ compatibility warning.
 | `enchantlist [filter]` | Enumerate the enchantment recipe registry — PresetID, RecipeID, name, compatible-gear summary, incenses; optional name/id filter. |
 | `enchantdump` | Per held or equipped item: active enchantment ids and names, live-vs-prefab weapon damage, and registration health. |
 | `enchantregistry` | Write `BepInEx/config/enchantkit_registries/enchantments.json` — the offline name-to-PresetID catalog. |
-| `selftest` | Zero-interaction environment and grammar checks (`[SELFTEST] PASS/FAIL … DONE`). |
+| `reloadcfg` | Re-read `cobalt.enchantkit.cfg` from disk. BepInEx has no config file-watcher, so a hand edit does nothing until this runs. |
+| `selftest` | Zero-interaction environment and grammar checks (`[SELFTEST] PASS/FAIL/SKIP … DONE pass= fail= skip=`). At the main menu the two environment checks report `SKIP` — they need a loaded save — so `fail=` stays meaningful there. |
 
 `enchant` prefixes an enchantment with `force` to suppress the compatibility warning, and the
 inventory and spawn forms accept several enchantments joined with `+`. Examples:
@@ -117,10 +126,10 @@ unenchant weapon
 enchantlist Fire
 ```
 
-EnchantKit also registers ForgeKit's full **CommonVerbs** pack on this same channel
-(`give` / `drop` / `equip` / `teleport` / `goto` / `killnearest` / `learnskill` / … ), so a test
-session can stage the surrounding scenario — the gear, the enemy, the position — right beside the
-enchant commands.
+While the kit is enabled, EnchantKit also registers ForgeKit's **CommonVerbs** pack on this same
+channel (`give` / `drop` / `equip` / `teleport` / `goto` / `killnearest` / `learnskill` / … ), so a
+test session can stage the surrounding scenario — the gear, the enemy, the position — right beside
+the enchant commands. Setting `EnableEnchantKit = false` removes that pack too (see Settings).
 
 ## For modders
 
@@ -129,6 +138,11 @@ apply, spawn, and removal mechanics are internal, so there is no public enchantm
 add it to a mod's install when you want to stage enchanted gear during test sessions — most usefully
 alongside [Beastwhispering](../mods/beastwhispering/README.md), to exercise how its systems interact
 with enchanted weapons and armor.
+
+What a consuming mod *can* do is re-home the verbs: `EnchantKit.EnchantVerbs.RegisterAll(host, log)`
+is public, like `ForgeKit.CommonVerbs.RegisterAll` and `SkillKit.SkillVerbs.RegisterAll`, so the six
+enchant verbs can answer on your own mod's `<yourmod>_cmd.txt` instead of (or as well as)
+`EnchantKit_cmd.txt`.
 
 Install it the usual way — a project reference plus a hard dependency so BepInEx loads it (and
 ForgeKit under it) first:

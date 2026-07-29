@@ -31,6 +31,7 @@ has the dependency map and a "which kit do I need" table.
 | [CompanionKit](kits/companionkit.md) | Persistent creature companions. |
 | [AggroKit](kits/aggrokit.md) | Aggro and threat control. |
 | [NetKit](kits/netkit.md) | Photon co-op networking. |
+| [DonorKit](kits/donorkit.md) | Live creature bodies for any species, anywhere in the world (the donor-scene harvest engine). |
 | [SpawnKit](kits/spawnkit.md) | Runtime creature spawning. |
 | [StoryKit](kits/storykit.md) | NPCs, trainers, and dialogue. |
 | [EnchantKit](kits/enchantkit.md) | Apply enchantments and spawn pre-enchanted gear (dev / testing tool). |

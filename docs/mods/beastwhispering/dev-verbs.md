@@ -32,7 +32,7 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 |---|---|
 | `tame` | Tame the nearest wild creature (the F7 action). |
 | `recall` | Recall the pet to your feet; re-forms a bodiless pet. |
-| `release` | Release the pet — full teardown, ends the bond, clears the save. |
+| `release` | Release the pet — full teardown, ends the bond, **deletes the pet's save file**. Irreversible, so it is guarded: the first call only warns and arms a 30-second window; `release confirm` (or calling `release` again inside the window, at least a second later — two `release` lines in one command-file write do NOT confirm each other) is what actually does it. Tune the guard with `[Systems] ReleaseConfirmLoyaltyThreshold`. |
 | `resummon` | Re-form the pet's body now. |
 | `reformtest` | Force the re-form path (diagnostic). |
 | `petdown` | Down the pet via the real downed flow (tests the re-form-after-defeat path). |

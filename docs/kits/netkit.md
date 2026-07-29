@@ -35,7 +35,10 @@ What NetKit owns so a consumer mod doesn't have to:
   per-channel extension string), and the sender's build identity. From that map it works out, per
   channel, which peers can speak it. If a peer's build identity differs from yours, NetKit logs a
   one-time advisory note — a stale install is a common reason co-op misbehaves even when both sides
-  read as modded.
+  read as modded. The handshake also **refreshes itself**: every few seconds NetKit checks whether
+  the hello it would send now differs from the one it last sent (a mod's data was retuned
+  mid-session, or a channel registered late) and, if so, re-sends it — so peers on either side of
+  the session learn about mid-session changes without anyone changing scenes.
 - **A peer ledger and absence detector.** Peer readiness is surfaced per channel
   (`OnPeerReady` / `OnPeerLost` / `IsPeerReady` / `ReadyCount`) — a peer can support one channel but
   not another. If a joined peer never sends a hello within a grace window, NetKit warns once that it
@@ -64,6 +67,7 @@ build.
 | `EventCode` | `177` | The Photon event code the `Event` transport uses (0–199; 200+ are reserved). Consulted only when `Transport = Event`. Change only if it collides with another mod's event code. |
 | `HeartbeatSeconds` | `30` | While in a room, log one heartbeat line per channel every N seconds (role, peers ready, the consumer's fragment, network time), so a log names when a session went quiet. `0` disables it. |
 | `HelloWarnSeconds` | `10` | How long after a peer joins to wait for its hello before warning that it appears unmodded. |
+| `HelloRefreshSeconds` | `5` | While in a room, check every N seconds whether the handshake payload changed since the last send (a mid-session data retune, a late-registered channel) and re-send it to peers when it did. `0` disables the refresh — a change then only reaches peers on the next join or scene load. Applied at startup. |
 | `VerboseNet` | `true` | Log every send/receive as one line under the owning channel's tag. Turn off to keep only the counters and ring buffer. |
 | `DisconnectTimeoutMs` | `0` | Override Photon's disconnect timeout (vanilla is 10000 ms). At the default, a peer silent for longer than 10 s during a long load or a network hitch is torn down and re-read as "gone". Widen to `30000`–`60000` to ride those out. `0` leaves the vanilla value untouched; negative is ignored. Applied once at startup. |
 
@@ -110,6 +114,13 @@ ch.Register("spawn", msg => {
     Apply(msg.Payload);
 });
 
+// Or register with a declared role constraint — the guard your handler would otherwise have to
+// open with. A violating message is drop-counted (visible in netdump) and the handler is skipped.
+ch.Register("mint", HandleMint,
+    HandlerRole.RunOnGuestOnly | HandlerRole.SenderMustBeMaster | HandlerRole.SenderMustNotBeSelf);
+// Flags: Any (no constraint) · RunOnMasterOnly · RunOnGuestOnly (note: in solo the local player
+// IS the master) · SenderMustBeMaster · SenderMustNotBeSelf (drops your own broadcast echo).
+
 // Send. All return bool and never throw; a refused send is counted as a drop.
 ch.SendToMaster("hit", payload, extra);   // guest → master
 ch.SendToOthers("spawn", payload);        // everyone but me
@@ -120,12 +131,101 @@ ch.SendToPlayer(player, "sync", payload); // one actor
 ch.OnPeerReady += info => Flush(info.Actor);   // info: Actor, ChannelVersion, Extension, IsMaster
 ch.OnPeerLost  += info => Forget(info.Actor);
 
+// Session events (shared — stop hand-rolling room watches and scene-ready trackers).
+Net.OnRoomChanged += c => TearDown(c.OldRoomName, c.NewRoomName);  // join, leave, or room switch;
+                                                                   //  null name = "not in a room"
+Net.OnSceneReady  += scene => Resync(scene);   // once per (room, scene): loader done + local player
+                                               //  resolved. Both roles.
+// Each subscriber runs in its own try/catch — your throw is logged, never breaks the others.
+
 // Report a message your own code chose to throw away, so netdump can name it.
 ch.CountDrop("spawn", "no-row");
 
 // Session guards live on the static facade.
 if (Net.InRoom && Net.IsMaster) { /* … */ }
 // Also: Net.Attached, Net.IsGuestInRoom
+
+// ── State mirrors (change-latched outbound sync) ─────────────────────────────
+// A StateMirror sends a value only when it CHANGED since the last send that
+// actually LANDED — the "latch-on-landed" rule (a failed send retries next
+// tick) is enforced by the kit, so you never hand-roll a last-sent field again.
+var hp = ch.Mirror("mymod.hp", MirrorTarget.Master,          // or Others / Actor
+    build: () => HasPet ? $"{cur}\t{max}" : null,            // null = nothing to mirror
+    quantize: s => Round(s));                                // optional compare projection
+hp.Tick();               // call on your own cadence; sends iff quantize(build()) changed
+hp.Invalidate();         // force the next Tick to re-send (receiver's row was rebuilt)
+hp.Reset();              // silently forget (left the room)
+// Full knobs via MirrorOptions: Extra (the envelope's extra slot — participates in the
+// change key), ResendSeconds (periodic re-send of an UNCHANGED value, loss tolerance),
+// and ClearVerb/ClearPayload (a null build after a landed send then owes ONE wire clear,
+// retried until it lands). LastPayload/LastExtra expose the last landed bytes — the
+// natural source for a flush-to-late-joiner.
+
+// ── Request/Ack (correlated guest → master requests) ─────────────────────────
+// For a request that SPENDS something on the answer (an item, a charge): the kit
+// mints a correlation token, enforces one-in-flight per verb, times out, and
+// drops stale/duplicate acks — exactly one result callback per request.
+ch.SendRequest("mymod.spend", payload, timeoutSeconds: 2.5f, r => {
+    switch (r.Outcome) {
+        case RequestOutcome.Ok:            /* the handler answered: r.Result */ break;
+        case RequestOutcome.TimedOut:      /* nothing answered — refuse, spend nothing */ break;
+        case RequestOutcome.RefusedNoSend: /* never sent: r.Refusal ("in-flight", "send-failed", …) */ break;
+    }
+});
+// Master side: the kit parses the token BEFORE your handler runs (msg.Payload = your body,
+// token stripped) and only reply() can ack — it always carries the real token back to the
+// requesting actor on "<verb>.ack". NOT replying is the correct response to an
+// unauthorized sender (the requester's timeout answers honestly).
+ch.RegisterRequestHandler("mymod.spend", HandlerRole.RunOnMasterOnly, (msg, reply) => {
+    if (!Authorized(msg)) return;          // silence — never ack an unbound actor
+    reply(DoTheThing(msg) ? "ok" : "refused");
+});
+// Fire-and-forget verbs should stay plain sends — not every request wants this weight.
+
+// ── ReplicatedRecord stores (announce/refresh/flush/teardown lifecycles) ─────
+// For KEYED RECORDS one machine owns and the session must agree on (a guest's
+// pet, a broadcast spawn, a cosmetic effigy): the store owns existence,
+// identity, freshness, authority and flush — payload bytes and what a row
+// MEANS stay yours. Verb strings are configurable; byte-level interop with
+// pre-migration builds holds only where the consumer already carried the wire
+// key in the extra slot (ck.proxy.*/ck.effigy.*) — shipped sk.spawn/sk.gone
+// carry the uid in the payload instead, so old/new sk builds do NOT interop
+// (covered by the same-bundle cutover rule).
+var store = ch.RegisterStore("proxy", new StoreOptions {
+    Authority        = StoreAuthority.Master,   // owners announce → the master binds + holds rows
+                                                // (StoreAuthority.Owner = broadcast-to-Others shape:
+                                                //  rows live on every OTHER machine, flush targeted)
+    ResolveUidOwner  = (uid, slot, actor) =>    // sender↔uid authorization, YOUR game lookup:
+        MyResolve(uid, actor),                  //  OwnedBySender / NotOwnedBySender / Unknown
+                                                //  (Unknown = DEFER — the re-announce retries)
+    RefreshSeconds   = 30f,                     // periodic re-announce of an unchanged record
+    FlushOnPeerReady = true,                    // late joiners get the current state: Master
+                                                //  authority re-arms the owner latches (the next
+                                                //  push re-announces); Owner authority does a
+                                                //  TARGETED last-landed-bytes replay to the new
+                                                //  peer only. Set false to drive FlushTo(actor)
+                                                //  yourself when you must ORDER the replay against
+                                                //  sibling traffic (the effigy set-before-stance
+                                                //  rule).
+    ClearOnOwnerLost = true,                    // OnPeerLost fast path + a paced backstop for
+    OwnerMissingSeconds = 45f,                  //  exotic failures (owner replica unresolvable)
+    ClearOnRoomChange = true,                   // the room watch lives in the kit, per store
+    Verbs = new StoreVerbs { Announce = "mymod.announce", Release = "mymod.release" },
+});
+// Owner side — push your CURRENT state every tick; the kit latches (fresh /
+// changed / periodic; latch-on-landed, so a failed send retries next push):
+store.Announce(key, payload, extra);   // key = "ownerUid" or "ownerUid:slot"
+store.Release(key, "pet released");    // wire clear retried until it lands
+store.Invalidate(key);                 // authority's row torn down out-of-band → re-announce now
+// Authority / mirror side — rows + events:
+store.OnSet     += (key, payload, meta) => Apply(key, payload);   // meta: SenderActor, IsRebind,
+store.OnCleared += (key, reason, meta) => TearDown(key, reason);  //  IsRefresh, Extra
+store.TryGet(key, out var row);        // row: Key, OwnerUid, Slot, ActorId, Payload, age stamps
+store.RowsSnapshot();
+store.FlushTo(actor);                  // Owner authority only: on-demand targeted replay of the
+                                       //  last landed bytes (a guest's scene-ready resync request;
+                                       //  OnPeerReady is edge-triggered and can't re-fire). Sets
+                                       //  are idempotent. Returns the count sent; 0 on Master.
 ```
 
 **API notes and traps**
@@ -141,11 +241,62 @@ if (Net.InRoom && Net.IsMaster) { /* … */ }
   try/catch with a per-verb error counter — one mod's throw can't kill the relay.
 - **Extension strings drift.** If a peer re-sends its hello with a changed extension for your channel
   (e.g. a live data retune), `OnPeerExtensionChanged` fires instead of re-raising `OnPeerReady`;
-  readiness doesn't change.
-- **Room-join asymmetry.** A room join clears the ready set without firing `OnPeerLost`. If you need
-  cleanup on a room change, watch room identity yourself rather than relying on ready/lost symmetry.
+  readiness doesn't change. The hello refresh (see above) re-sends automatically when your own
+  extension changes — but keep the extension callback **deterministic** for a given data state: a
+  value that changes on every call would make the refresh re-send every interval.
+- **Late channel registration works.** A channel registered after a peer's hello already arrived
+  (e.g. at pack-load time) is immediately evaluated against the stored hellos, so compatible peers
+  read as ready without waiting for a re-hello.
+- **Room-join asymmetry.** A room join clears the ready set without firing `OnPeerLost`. For
+  room-change cleanup, subscribe to `Net.OnRoomChanged` rather than relying on ready/lost symmetry.
+- **Mirror null-build semantics.** A `build` that returns `null` means "nothing to mirror right
+  now" and leaves the latch untouched (a transient window — say the player object is mid-reload —
+  must not eat a pending change). Only a mirror configured with a `ClearVerb` treats null as "the
+  state went away": it sends one clear and forgets. `""` is a real payload, distinct from null.
+- **Request results are answers, not verdicts.** The kit correlates; it never interprets. An
+  `Ok(result)` means the handler replied — whether `result` authorizes your spend is your contract
+  (compare against your own constants; treat anything unknown as a refusal).
+- **Store keys are entity ids.** A store key is `ownerUid:slot`; a bare key is slot 0 in BOTH
+  directions — an old peer's bare announce lands at `uid:0`, and a new peer emits the bare form for
+  slot 0, so the shipped ownerUid-keyed wire keeps interoperating while multi-record consumers
+  (a second pet, a hireling) get slots. Slots > 0 (and non-empty consumer `extra` on `Announce`)
+  are NEW capabilities: an old peer reads them as unknown bare keys — new features degrade, shipped
+  ones never break.
+- **Owner-authority local apply is unconditional.** An Owner-authority `Announce` feeds the local
+  row table (raising `OnSet` here) BEFORE the broadcast and regardless of the send outcome, so the
+  announcing machine's own view never lags a transport outage; the latch still advances only on a
+  landed send, so the wire side retries. Live consumers: CompanionKit's `effigy` store (Owner
+  authority, since the 4B migration) and its `proxy` store (Master authority — the guest-pet
+  proxy lifecycle, since the 4C migration), both on the `ck` channel with wire bytes identical
+  to the pre-store builds; and SpawnKit's `spawn` store (Owner authority, since the 4D migration)
+  on the `sk` channel — see the cutover note below. NB a Master-authority consumer's OWNER side
+  may keep hand-sending the
+  same bytes instead of using the store's `Announce` book (the proxy's guest half does — its
+  cadence is entangled with consumer policy); the store's receive half neither knows nor cares.
+- **⚠ `sk` WIRE CUTOVER at SpawnKit 0.4.0 (the 4D migration) — old and new builds do NOT interop.**
+  Migrating a consumer onto the store is byte-transparent only if it ALREADY carried its wire key
+  in the message `extra` slot, which `ck.proxy.*`/`ck.effigy.*` did. `sk.spawn`/`sk.gone` did not:
+  the shipped build sent `extra=""` with the spawn uid inside the payload. The payload bytes are
+  unchanged and the uid still rides inside them, but the KEY half moved, so a pre-4D announce
+  decodes an empty wire key at a 4D receiver and drops `empty-key`, and a pre-4D `sk.gone` drops
+  `no-row`. Channel compatibility is exact ordinal version equality, so the remedy is the version:
+  SpawnKit went `0.3.1` → `0.4.0` and a mixed pair now refuses LOUDLY at the handshake rather than
+  connecting and silently dropping every spawn. Payload-format compatibility is NOT interop — do
+  not read it as such. **The general rule this instantiates: if a consumer's shipped messages did
+  not already carry the wire key in `extra`, migrating it to a store is a breaking wire change, and
+  the channel version MUST be bumped in the same commit.** Both boxes on the same bundle is the
+  standing NetKit cutover rule; this is its second exercise.
+- **The store owns the lifecycle, not the meaning.** Sender↔owner authorization (defer on an
+  unresolvable uid, refuse a non-owner), the rebind rule (a new actor may claim a key only after
+  the bound actor actually left — a reconnect, never a live hijack), release authorization (only
+  the bound actor may release), the owner-missing backstop and the room-change teardown are all the
+  kit's. What a row *does* (spawn an anchor, build a body) belongs in your `OnSet`/`OnCleared`.
+  Refusals surface as uniform drop reasons in netdump: `owner-unresolvable`, `not-owner`,
+  `rebind-refused`, `no-row`, `wrong-sender`, `empty-key`.
 - **The compute half is unit-tested.** The hello codec, channel-version compatibility, peer-ledger
-  timing, counters, and heartbeat formatter live in `NetKit.Core` with no game references.
+  timing, counters, heartbeat formatter, the mirror latch, the request correlation/timeout book,
+  and the record store's key codec / row state machine / announce latch live in `NetKit.Core` with
+  no game references.
 
 ## See also
 
