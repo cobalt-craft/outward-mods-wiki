@@ -123,7 +123,7 @@ creation — a live change applies only to the next tame/reload.
 | Key | Default | Effect |
 |---|---|---|
 | `EnableTemperatureSystem` | `true` | Master switch for pet comfort (ambient sampling, discomfort stages, HP drain, death, blankets). |
-| `EnableWeatherFoods` | `true` | Feeding a weather-resist consumable (potions, teas, water) grants the pet the player's hot/cold relief; all pets may drink water. |
+| `EnableWeatherFoods` | `true` | Feeding a weather-resist consumable (potions, teas, water) grants the pet the player's hot/cold relief; all pets may drink water, and a **Weather Defense Potion** grants total weather immunity for its duration. |
 | `PetDeathMode` | `Permanent` | What happens when exposure drains the pet to zero: `Permanent` (dies, bond deleted), `KnockedOut` (collapses/re-forms), `Disabled` (holds at 1 HP). |
 | `SufferingDrainPerMinute` | `2` | Pet HP drained per minute (percent of max) while Suffering. |
 | `CriticalDrainPerMinute` | `6` | Pet HP drained per minute (percent of max) while Critical. |
@@ -194,7 +194,6 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `DamagePerStackPercent` | `35` | Extra damage percent per stack consumed. |
 | `EnableKillFavor` | `true` | A kill by the execute grants the player a loyalty-tiered stat buff (the species' `killBuff`). |
 | `KillFavorDurationSeconds` | `300` | How long that buff lasts. |
-| `EnableFtkTaunt` | `true` | A species with a `taunt` entry pins its execute target's aggro on the pet per stack spent. |
 
 ## [Brace] — the tank counterattack stance (Armored Hyena)
 
@@ -206,6 +205,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `NegateCounteredHit` | `true` | A countered hit deals zero damage to the pet. |
 | `RiposteImpact` | `60` | Impact (knockback) the riposte carries. |
 | `CueVolume` | `0.5` | Volume (0–1) of the parry cue at brace-enter. `0` = none. |
+| `EnableTaunt` | `true` | Entering the stance pins the pet's current target's aggro onto the pet. The pin lasts **1 second at minimum loyalty rising to 5 seconds at maximum**, and fires once per Hunt as One cast, with an on-screen line (*"… draws the enemy's fury with an infernal growl!"*). Species without a taunt entry in their data are unaffected. |
 
 ## [SkillEcho] — the pet's bonus strike on your weapon skills
 
@@ -250,7 +250,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 |---|---|---|
 | `[Sigils] EnableSigilSynergies` | `true` | A species with a sigils entry changes its Hunt as One hit while the pet stands in a mage sigil. |
 | `[Gear] EnableGearEffects` | `true` | A worn item with a gear entry alters the active pet (e.g. a Pearlbird Mask boosts loyalty gain). |
-| `[BuffFoods] EnableBuffFoods` | `true` | Feeding a buff food grants a temporary damage buff (not a meal). |
+| `[BuffFoods] EnableBuffFoods` | `true` | Feeding a buff food grants a temporary damage buff. It fills the belly too only if the species' diet also accepts that item (then one item does both); otherwise it is buff-only. |
 | `[Scavenge] EnableScavengeBonus` | `true` | A species's listed loot containers roll extra times on first open, by loyalty tier. |
 | `[HUD] EnableHealthHud` | `true` | Show a simple pet-health bar (top-left) while a live pet exists. |
 

@@ -6,16 +6,20 @@ what makes each one distinct.
 
 Beastwhispering ships data for a large catalogue of Outward creatures, but most of that catalogue is
 reference and internal support data — the set you can actually tame and keep is the short list below.
-Matching is by species name, so a **variant tames with its base species' chow** (a wild Armored Hyena
-with Hyena Chow, a Pearlbird Cutthroat with Pearlbird Chow).
+Matching is by species name, so a **variant tames with its base species' chow** — a wild Armored Hyena
+is tamed with Hyena Chow.
+
+> **Exception: the Pearlbird Cutthroat cannot be tamed.** Pearlbird Chow does not work on one. The
+> refusal happens before the chow is eaten, so nothing is consumed — offer it to a base Pearlbird
+> instead.
 
 ## Tameable species
 
 | Species | Role & signature attack | Bond buff | Notable food / gift |
 |---|---|---|---|
-| **Hyena** | Brawler. Its bite inflicts **Pain** build-up — stacking hits wear an enemy down. | Physical damage | Eats raw meat, fish, cactus fruit. Chow: pressed meat + fish. Gifts raw meat and scaled leather. Fed Alpha Jerky or Raw Alpha Meat, it gets a temporary damage buff scaled by loyalty. |
-| **Armored Hyena** | Tank. **Brace** — Hunt as One opens a counterattack stance that negates incoming blows and ripostes with heavy impact and a random debuff (Weaken or Sapped). Tamed with **Hyena Chow**. | Physical damage | Same diet as the Hyena, including the Alpha Jerky / Raw Alpha Meat damage buff. |
-| **Pearlbird** | Support striker. Its signature attack inflicts **Cripple**. | Movement speed | Eats gaberries and vegetables. Chow: maize + gaberries. Gifts eggs — and, taught the gift skill, quality feathers for fletching arrows. |
+| **Hyena** | Brawler. Its bite inflicts **Pain** build-up — stacking hits wear an enemy down. | Physical damage | Eats raw meat, fish, cactus fruit, and Jerky. Chow: pressed meat + fish. Gifts Hide, Raw Salmon, Raw Rainbow Trout, Scaled Leather, and rarely Raw Alpha Meat or Raw Jewel Meat — otherwise Raw Meat. Fed **Metalized Bones**, it gains a permanent stacking bonus. Fed **Alpha Jerky** or **Raw Alpha Meat**, it gets a temporary damage buff scaled by loyalty — and since it eats meat anyway, Raw Alpha Meat feeds it *and* buffs it off the one piece. |
+| **Armored Hyena** | Tank. **Brace** — Hunt as One opens a counterattack stance that negates incoming blows and ripostes with heavy impact and a random debuff (Weaken or Sapped). Entering the stance also **pins its current target's aggro onto the pet**, for longer the deeper the bond. Tamed with **Hyena Chow**. | Physical damage | Same diet, gift table, **Metalized Bones** relic, and **Alpha Jerky** / **Raw Alpha Meat** damage buffs as the Hyena. |
+| **Pearlbird** | Support striker. Its signature attack inflicts **Cripple**. | Movement speed | Eats gaberries, vegetables, and any mushroom (mushrooms give a little less than vegetables). Chow: maize + gaberries. Gifts eggs — and, taught the gift skill, quality feathers for fletching arrows. Fed **Pearlbird's Courage**, it gains a permanent stacking bonus. |
 | **Veaber** | Hex-dealer. Its signature attack inflicts **hexes chosen by what you've recently fed it** — a scavenger whose diet shapes its bite. | Decay damage | Scavenger diet (food waste, seeds, oils, bones). Chow: food waste + crystal powder + mushroom. Gifts eggs. |
 
 Each species also has its own comfort band, gift table, and — for some — scent tracking, scavenge
@@ -27,7 +31,8 @@ bonuses, and relic feeds. Those details, and the full per-creature data, live in
 The shipped species deliberately play differently through their signature (Hunt as One) attacks:
 
 - **Status bite** (Hyena) — build up a debuff over repeated hits.
-- **Counterattack stance** (Armored Hyena) — a defensive tank that turns enemy blows into ripostes.
+- **Counterattack stance** (Armored Hyena) — a defensive tank that turns enemy blows into ripostes, and
+  taunts its target into swinging at the pet rather than at you.
 - **Debuff striker** (Pearlbird) — reliable crowd control.
 - **Adaptive hexes** (Veaber) — its effect depends on its recent meals.
 

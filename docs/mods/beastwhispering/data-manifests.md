@@ -34,14 +34,14 @@ Free-text `notes` may sit alongside; they are documentation only and are never c
 | `tamingFood` | The chow + recipe scroll you cook to tame it, and the recipe's ingredients | `TamingFoods.json` |
 | `comfort` | Temperature comfort band (`min`/`max` steps) | `SpeciesComfort.txt` |
 | `buffs` | Passive player buffs the bond grants (stat + percent per loyalty level) | `SpeciesBuffs.txt` |
-| `signatureAttack` | The Hunt as One special: trigger, windup, status, damage mult, cooldown, build-up, and `Kind` (Melee / Ranged / Brace) | `SpeciesSpecialAttacks.txt` |
-| `forTheKill` | The For the Kill execute debuff, plus optional `killBuff` and `taunt` | `ForTheKill.json` |
+| `signatureAttack` | The Hunt as One special: trigger, windup, status, damage mult, cooldown, build-up, `Kind` (Melee / Ranged / Brace), and an optional `taunt` (its minimum and maximum aggro-pin seconds, lerped over loyalty) | `SpeciesSpecialAttacks.txt` |
+| `forTheKill` | The For the Kill execute debuff, plus an optional `killBuff` | `ForTheKill.json` |
 | `foodHexes` | Which fed foods add which hex build-up on Hunt as One | `FoodHexes.json` |
 | `gifts` | The Gift skill's drop table (default drop + loyalty-lerped drops + nothing-chance) | `PetGifts.json` |
 | `senses` | Interesting item/creature spawns the pet noses out ("scent") | `PetSenses.json` |
 | `scavenge` | Loot containers the pet rolls extra times, and how many per loyalty tier | `PetScavenge.json` |
 | `sigils` | How the Hunt as One hit changes while the pet stands in a mage sigil | `Sigils.json` |
-| `buffFoods` | Fed consumables that grant a temporary damage buff (not a meal) | `BuffFoods.json` |
+| `buffFoods` | Fed consumables that grant a temporary damage buff. Independent of `diet`: an item in both is fed as a meal **and** buffs, off one item; an item only here buffs without feeding | `BuffFoods.json` |
 | `skillEchoes` | Per-skill overrides for the pet's bonus strike on your weapon skills | `SkillEchoes.json` |
 | `loyaltyGrowth` | How the pet's stats grow with loyalty (per stat group, percent at 100) | `SpeciesGrowth.txt` |
 | `donorScenes` / `donorObject` | Which scenes the creature's body can be harvested from | `DonorScenes.txt` (CompanionKit) |

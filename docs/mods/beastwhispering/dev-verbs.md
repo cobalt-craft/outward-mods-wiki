@@ -93,9 +93,9 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `giftdump` | Gift drop table & loyalty-lerped mix. |
 | `fletchdump` | Feather-fletch registration & held-ammo state. |
 | `buffdump` / `bufffooddump` | Bond buffs / buff-food state. |
-| `synergydump` / `ftkdump` / `killfavordump` / `tauntdump` | Synergy, For the Kill, kill-favor, taunt state. |
+| `synergydump` / `ftkdump` / `killfavordump` | Synergy, For the Kill, kill-favor state. |
 | `boltdump` / `firebolt` | Ranged-special rig census / headless test fire. |
-| `bracedump` / `brace` | Brace stance state / force-enter. |
+| `bracedump` / `brace` / `tauntdump` | Brace stance state (including its aggro-pin) / force-enter / taunt state. |
 | `echodump` / `echo` | Skill-echo roster / trigger. |
 | `warddump` / `lanterndump` | Ward-share / lantern-share state. |
 | `bandagedump` | Bandage-to-pet pipeline (resolved item/status, live anchor state, last action). |

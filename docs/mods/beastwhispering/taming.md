@@ -28,7 +28,8 @@ chow.
 ### Which creatures, which chow
 
 Chow matches by species name, so a variant tames with its base species' food — a wild **Armored
-Hyena** is tamed with **Hyena Chow**, and a **Pearlbird Cutthroat** with **Pearlbird Chow**. See
+Hyena** is tamed with **Hyena Chow**. The one exception is the **Pearlbird Cutthroat**, which cannot
+be tamed at all: Pearlbird Chow is refused before it is eaten, so you keep the chow. See
 [Creatures](./creatures.md) for the tameable roster and [Feeding & diet](./feeding-and-diet.md) for
 what each chow is made of.
 

@@ -13,7 +13,9 @@ can be taught signature skills. A native **Companion** tab in the character menu
   carry over too — devotion shrinks them, neglect deepens them.)
 - **Signature attack — "Hunt as One."** A learnable skill that fires the pet's signature attack while
   you land a synced strike on the same target. Each species' signature is different: a status-inflicting
-  bite, a bracing counterattack, a ranged bolt, and so on (see [Creatures](./creatures.md)).
+  bite, a bracing counterattack, a ranged bolt, and so on (see [Creatures](./creatures.md)). A bracing
+  species also **taunts** as the stance opens, pinning its current target's aggro onto the pet for
+  between one and five seconds depending on loyalty — a deliberate way to pull a dangerous enemy off you.
 
 Combat ranges (how far the pet will engage, its melee reach, and how far it leashes while fighting) are
 all tunable in the [config reference](./config-reference.md) (`[Combat]`).

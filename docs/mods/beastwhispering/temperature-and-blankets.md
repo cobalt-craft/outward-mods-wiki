@@ -55,6 +55,18 @@ pet the hot/cold relief they'd give you, on top of any normal meal:
 - **Every** pet can drink water for cold/heat relief — off its diet, and even when satiated. (Water is
   a drink, not a meal: it grants no loyalty or heal.)
 
+### Total immunity: the Weather Defense Potion
+
+A fed **[Weather Defense Potion](https://outward.fandom.com/wiki/Weather_Defense_Potion)** is the one
+absolute: for its **10 minutes** the pet is **completely immune to weather** — no cold, no heat, no
+matter how far outside its comfort band it is. This is not step relief that a harsh enough climate can
+outrun; while it runs the pet simply cannot be made uncomfortable by temperature, so there is no
+loyalty decay and no health drain from the climate.
+
+Like water, the potion is drinkable by **every** pet — off its diet and even when satiated (no species
+eats potions, so it would otherwise be un-feedable). It's a drink, not a meal: no loyalty, no heal, no
+change to hunger. The Companion tab's *Sipped* row reads "immune to the weather" while it lasts.
+
 Which consumables count, and how much relief each gives, is data-driven — see
 [Feeding & diet](./feeding-and-diet.md) and [Data manifests](./data-manifests.md).
 
