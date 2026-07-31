@@ -16,8 +16,28 @@ no player-facing surface of its own.
 
 ## For players
 
-You won't interact with ForgeKit directly. It ships as a dependency of the mods you install and does
-nothing on its own — install it because another mod declares it as a requirement.
+ForgeKit itself does nothing on its own — you install it because another mod declares it as a
+requirement. But every mod built on it exposes one thing you *can* touch directly, with nothing more
+than a text editor: **the command channel.**
+
+Each mod that uses ForgeKit watches its own plain-text file, `BepInEx/config/<Mod>_cmd.txt` (e.g.
+`Beastwhispering_cmd.txt`). While the game is running, open that file in any text editor, type a verb
+on its own line, save the file — and the mod runs it on its next poll (a fraction of a second later,
+even if the game is paused). This is a **file pipe**: your text editor and the running game are two
+separate programs, and the file is the mailbox between them. No console, no cheat menu, nothing
+injected into the game — just a file getting written and read.
+
+Type `help` and save to see the full list of verbs that mod's channel understands, with a short
+description of each. Most mods only expose a handful of gameplay-relevant verbs this way (things
+like teleporting, spawning an item, or adjusting the time of day) — this isn't a general cheat
+console, it's whatever the mod's author chose to expose for testing and troubleshooting, and it
+varies mod to mod. If you're playing co-op, note that some verbs are host-only (moving the whole
+party's clock or location) precisely because a guest firing them would desync the session.
+
+This is also how the mod bundle's remote tools work under the hood: `Stream-Logs.bat` and
+`Command-Relay.bat` (see the main README) are just automated versions of "watch/write this same
+file," routed over the network so a tester on a different machine can be helped without them typing
+anything themselves.
 
 ## What's in it
 
@@ -151,6 +171,22 @@ public class Plugin : BaseUnityPlugin
 
 Everything takes the *consumer's* `ManualLogSource`, so every line lands under your mod's name in the
 log.
+
+### The command channel as an automation surface
+
+The same file pipe described above for players is, from a modder's side, a ready-made hook for
+**agentic or scripted testing** — an AI agent, a CI job, or any external script can drive the game
+the same way a human editing `<Mod>_cmd.txt` would: write a verb, poll the log for the result, repeat.
+Nothing special has to be built for this — it's the ordinary command channel, used programmatically
+instead of by hand. This family's own live-test workflow works exactly this way: a test-runner writes
+verbs into the channel and reads `LogOutput.log` for `[TAG]`-prefixed results, closing hundreds of
+test items across unattended sessions without a human at the keyboard. `script`/`scriptcancel`/
+`scriptstatus` (registered by `CommonVerbs`, see `docs/script-verb-testplan.md`) extend this further —
+a whole timed sequence of verbs (`step ; wait 1s ; step ; ...`) runs from a single file write, which
+matters most when the write itself is expensive (e.g. relayed over a network to a remote/guest
+machine — see `scripts/nas-cmd.sh`). If your mod's verbs are meant to be automation-friendly, keep
+their output greppable (one clearly-tagged log line per outcome) — that log line *is* the automation's
+return value.
 
 ### Claim your keybinds
 

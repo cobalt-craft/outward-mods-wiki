@@ -1,5 +1,11 @@
 # SkillKit — ship a custom learnable skill
 
+> **Getting an id range.** Item and status ids are baked into player saves, so two mods must
+> never ship the same number. The Outward modding community allocates a range per mod — ask
+> there before you ship ids, and use only numbers from the range you were given. `12345` in
+> the samples below is a placeholder, not a free id.
+
+
 **SkillKit** is a reusable library (kit) for Outward that owns the *mechanism* of shipping a custom
 learnable skill — active or passive — so a mod doesn't have to rediscover Outward's skill-wiring
 traps. The consuming mod owns the *content* (the skill's SideLoader XML, its ItemID, its icon art,
@@ -94,7 +100,7 @@ DLL) that clones a donor into your ItemID, then register a spec from your `Awake
 ```csharp
 SkillRegistry.Register(new SkillSpec
 {
-    ItemId = 91007003,                     // your id block; matches the XML's New_ItemID
+    ItemId = 12345,                        // an id from YOUR mod's allocated range; matches the XML
     Label  = "PetCommand",                 // log tag
     OnCast = player => TogglePetCommand(), // what the skill DOES (runs from the native pipeline)
 
@@ -191,7 +197,7 @@ Ship this in `<YourMod>/SideLoader/Items/<SkillName>/<SkillName>.xml`:
 <SL_Skill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <EffectBehaviour>NONE</EffectBehaviour>
   <Target_ItemID>8200040</Target_ItemID>   <!-- a vanilla donor skill to clone -->
-  <New_ItemID>91007003</New_ItemID>        <!-- your ItemID block -->
+  <New_ItemID>12345</New_ItemID>           <!-- the SAME id as the spec above -->
   <Name>Command Pet</Name>
   <Description>What the tooltip says.</Description>
   <IsPickable>false</IsPickable>
@@ -243,7 +249,7 @@ SlStatus.DefaultIconLoader = (png, tag) =>              // the PNGs live in YOUR
     IconPin.Pin(CustomTextures.CreateSprite(myTexture(png), CustomTextures.SpriteBorderTypes.NONE));
 
 var spec = new SlStatusSpec {
-    Id = "MY_Badge", NumId = 91009900, Name = "Watched", Description = "Something is watching.",
+    Id = "MY_Badge", NumId = 12346, Name = "Watched", Description = "Something is watching.",
     Lifespan = -1f,                    // -1 = permanent indicator; > 0 = a real countdown
     IconPng = "MyBadge.png", IsMalus = true,
     Tag = "[MYMOD]", DisabledSuffix = "the badge is disabled.",
