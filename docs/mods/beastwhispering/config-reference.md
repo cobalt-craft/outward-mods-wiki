@@ -129,6 +129,7 @@ creation — a live change applies only to the next tame/reload.
 | `CriticalDrainPerMinute` | `6` | Pet HP drained per minute (percent of max) while Critical. |
 | `UneasyDecayMult` | `1.5` | Loyalty-decay multiplier while the pet is Uneasy. |
 | `SufferingDecayMult` | `2` | Loyalty-decay multiplier while Suffering or Critical. |
+| `BlanketRecipeDropChance` | `0.05` | Chance (0–1) that **each** blanket recipe scroll (Heating / Cooling) drops from a **world loot container** — chests (Chest, Ornate Chest, Trog Chest, Stash, Supply Cache) and the odd containers (Broken Tent, Hollowed Trunk, Junk Pile). Rolled independently per blanket, once per container when it fills. **Not** from creature kills, and not from corpse containers. `0` = craft-only. |
 
 See [Temperature & blankets](./temperature-and-blankets.md).
 
@@ -189,7 +190,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | Key | Default | Effect |
 |---|---|---|
 | `EnableForTheKill` | `true` | Consume all Synergy stacks for one joint execute strike plus the species' debuff. |
-| `CooldownSeconds` | `60` | For the Kill cooldown. Every cast burns it. |
+| `CooldownSeconds` | `35` | For the Kill cooldown. Every cast burns it. |
 | `BaseDamageMult` | `1.5` | Base multiplier on the joint strike before per-stack scaling. |
 | `DamagePerStackPercent` | `35` | Extra damage percent per stack consumed. |
 | `EnableKillFavor` | `true` | A kill by the execute grants the player a loyalty-tiered stat buff (the species' `killBuff`). |
@@ -324,7 +325,12 @@ damage while the visible body puppets it. Most of these are for debugging.
 |---|---|---|
 | `EnableTamingFoods` | `true` | The taming loop: recipe-scroll drops, cooking chow, and taming a wild one by using it nearby. |
 | `TameRadius` | `15` | How close a wild creature must be for using its taming food to tame it. |
-| `RecipeDropChance` | `1` | Global chance (0–1) a tameable creature drops its recipe scroll on death, ×its per-species chance. |
+| `RecipeDropChance` | `0.33` | Global chance (0–1) a tameable creature drops its recipe scroll on death, ×its per-species chance. Roughly one scroll per three tameable kills. |
+
+> **A changed default does not reach an existing install.** BepInEx writes a `.cfg` once and never
+> migrates a new default into it, so a game that has already generated
+> `BepInEx/config/cobalt.beastwhispering.cfg` keeps whatever number that file holds (`1` for anything
+> installed before this change). Edit the key by hand, or delete the file and let it regenerate.
 
 ## [Maren] — the trainer NPC
 
@@ -339,7 +345,7 @@ damage while the visible body puppets it. Most of these are for debugging.
 
 | Key | Default | Effect |
 |---|---|---|
-| `AllowConsumeTameInRoom` | `true` | Allow the host's consume-tame while other players are connected. (A known cost: the tamed creature may appear frozen to guests until their next area load.) |
+| `AllowConsumeTameInRoom` | — | **Removed 2026-07-31.** Every tame (solo, host or guest) now uses the safe non-consume path with a networked removal of the wild, so the old tradeoff this toggled (refuse the host's tame vs leave guests a frozen copy) no longer exists. A leftover line in an existing config file is ignored harmlessly. |
 
 ## Diagnostics & maintenance
 

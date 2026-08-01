@@ -46,6 +46,28 @@ A blanket wraps the pet for about **15 minutes**, shifting it several steps back
 one side. Wrapping in the same type again refreshes it; the opposite type replaces it. A blanket only
 helps against the extreme it's made for — a heating blanket does nothing in the heat, and vice versa.
 
+### Finding the recipes
+
+Each blanket also has a **recipe scroll** that can turn up in **world loot containers** — chests
+(Chest, Ornate Chest, Trog Chest, Stash, Supply Cache) and the odds-and-ends containers (Broken
+Tent, Hollowed Trunk, Junk Pile). The two scrolls are rolled **independently**, at **5% each** per
+container (`[Temperature] BlanketRecipeDropChance` in `BepInEx/config/cobalt.beastwhispering.cfg`);
+set it to `0` if you would rather the recipes stayed craft-only.
+
+```ini
+[Temperature]
+## Chance (0-1) that each blanket recipe scroll drops from a world loot container.
+BlanketRecipeDropChance = 0.05
+```
+
+They do **not** drop from creatures you kill, and not from the corpse containers you find lying
+around either — chests and the odd-container set only. A container rolls once when it fills its
+contents, so re-opening the same chest never yields more; when an area resets (about seven in-game
+days) its chests re-roll, ours along with the vanilla loot.
+
+> ⚠ **Built, not yet live-verified.** The blanket recipe-scroll drop has not been exercised in-game —
+> see `docs/pet-temperature-testplan.md` (V191–V195).
+
 ## Relief: weather foods and water
 
 Fed **weather-resist consumables** — warming and cooling potions, teas, and water — also grant the
