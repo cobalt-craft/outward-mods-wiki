@@ -53,7 +53,7 @@ re-acquires a fresh body from its saved species + captured attributes.
   cloned, and the scene is unloaded. This is **[DonorKit](./donorkit.md)**'s engine: `DonorHarvest`
   wraps the whole recipe plus the audio-registry, Photon-view-collision and mid-harvest-save guards
   that make it survivable, and a species→scene table ships embedded there and is config-overridable.
-  It became its own kit in 2026-07 so SpawnKit no longer depends on the pet library for creature
+  It is its own kit so SpawnKit doesn't have to depend on the pet library for creature
   supply; CompanionKit still drives it, and `CompanionKit.DonorHarvest` remains as a forwarder.
 - **Expeditions** — for creatures that live *only* out in an open-world region or town. Those scenes
   are too large to load additively (it crashes), so instead an expedition makes a **real round trip
@@ -61,7 +61,7 @@ re-acquires a fresh body from its saved species + captured attributes.
   every species that scene can donate, and returns the party to where it started. Paid once, those
   creatures are available (load-free) for the rest of the session. The whole tier — the trip state
   machine, the template store, the boot warm and its `[Expedition]` config — is
-  **[DonorKit](./donorkit.md)'s** since 2026-07-26; CompanionKit still drives it (a bodiless pet
+  **[DonorKit](./donorkit.md)'s**; CompanionKit still drives it (a bodiless pet
   re-forms from the store in milliseconds) and the `expedition`/`templateclear` verbs still answer
   on this kit's `ck_cmd.txt`.
 
@@ -70,7 +70,7 @@ re-acquires a fresh body from its saved species + captured attributes.
 `BepInEx/config/cobalt.companionkit.cfg`. Edit while the game is closed, or edit and run `ckreload`
 (BepInEx has no config file-watcher).
 
-> **Moved out (2026-07-26):** the `[Expedition]` and `[Rig]` sections now live in
+> **Moved out:** the `[Expedition]` and `[Rig]` sections now live in
 > `BepInEx/config/cobalt.donorkit.cfg` — see [DonorKit's settings](./donorkit.md#settings) for the
 > tables and an example. Entries left behind in this kit's cfg are inert; the defaults are
 > identical, and hand-tuned `[Expedition]` values should be re-applied in DonorKit's file. The
@@ -95,6 +95,11 @@ guest's own companion when it re-forms with no creature nearby to clone.
 | `EnableEffigyHarvest` | `true` | When an effigy's species isn't cached and no wild is nearby, let the master run the same additive donor harvest a local pet would — paid once per species. Off = wild → cache → ghost only. |
 | `HarvestRetryMinutes` | `10` | After an effigy harvest comes up dry, how long before that species may retry. Floor 10 seconds. |
 | `PinToAnchor` | `false` | Pin each effigy body onto its pet's networked anchor replica instead of navigating it independently. |
+| `PinLerp` | `1` | Position follow factor per frame while pinned. `1` = weld straight onto the anchor (which the engine already smooths — the expected setting); lower only if a session shows visible stepping. Clamped `0.05`–`1`. |
+| `PinCatchUpSpeed` | `12` | Metres/second a pinned body may close a gap larger than ~1.5 m at, so it runs back after an anchor-missing window instead of teleporting. Clamped `1`–`50`. |
+| `PinSnapDistance` | `12` | Gap (metres) at or past which a pinned body teleports onto its anchor instead of gliding — zone warps and respawns must not send a body running across the map. Clamped `5`–`100`. |
+| `AnchorNetLerpSpeed` | `4` | Re-tunes the game's own network smoothing on *foreign* anchor replicas here (vanilla `1`), so a pinned body doesn't wear the replica's lag on screen. `0` leaves vanilla untouched. Clamped `0`–`20`. |
+| `AnchorNetMoveSpeed` | `1` | The companion setting to the above, re-tuning the replica's move speed (vanilla `0.2`). `0` leaves vanilla untouched. Clamped `0`–`10`. |
 | `AnchorAnimSpy` | `false` | Diagnostic: periodically dump every foreign anchor replica's animator state. |
 
 ### `[Diag]` — the orphan-body reaper
@@ -146,9 +151,15 @@ verb or `help` lists them all.
 | `netbusdump` | Co-op network census (delegates to [NetKit](./netkit.md)'s `netdump`). |
 | `ckreload` | Re-read `cobalt.companionkit.cfg` from disk. |
 
+`photondump`, `audiodump`, `audioprune`, `terraindump` and `terrainfix` are
+[DonorKit](./donorkit.md)'s shared donor-diagnostic pack, registered here as well so you can reach
+them without switching channels; they also answer on `DonorKit_cmd.txt`. CompanionKit does **not**
+register ForgeKit's shared `CommonVerbs` pack — `give`, `teleport`, `reloadcfg` and the rest are not
+available on `ck_cmd.txt`.
+
 ## For modders
 
-CompanionKit gives you every path to acquire a companion body and drive it — and, since 2026-07-26,
+CompanionKit gives you every path to acquire a companion body and drive it, plus
 the whole **persistence lifecycle** (when to save, when to re-form, the body-acquisition ladder — see
 *Persistence* below); **you own the state** (what a save row means, its codec/schema) and your
 player-facing features (skills, feeding, UI).
@@ -169,11 +180,11 @@ public class Plugin : BaseUnityPlugin
 
     void Awake()
     {
-        // ONE host handle per consumer (2026-07-26) — it carries your logger + your
+        // ONE host handle per consumer — it carries your logger + your
         // ICompanionSettings and derives your log-tag suffix from the GUID automatically
         // ("cobalt.hireling" → "[ANCHOR/HIRE]" etc.; pass tagSuffix: "" for plain tags,
         // combatTag: "…" to rename the combat component's log noun — default "COMBAT").
-        // The old CompanionRuntime.Log / DefaultSettings globals are obsolete one-wave shims:
+        // The old CompanionRuntime.Log / DefaultSettings globals are obsolete shims:
         // they had no ownership rule, so with two consumers installed BepInEx load order decided
         // whose logger got all kit output. Don't set them.
         _host = CompanionHost.Create(GUID, NAME, Logger, new MySettings());
@@ -238,7 +249,7 @@ register verb handlers and send with it rather than touching Photon. Two notes w
   target): it drops the `PhotonPlayer` round trip, and an actor that has left is NetKit's uniform
   `actor-gone` drop rather than a consumer-side warning.
 - `NetBus.RegisterStore(name, StoreOptions)` registers a NetKit ReplicatedRecord store on the `ck`
-  channel. Two lifecycles ride stores since 2026-07-26, wire bytes byte-identical to the pre-store
+  channel. Two lifecycles ride stores, wire bytes byte-identical to the pre-store
   builds in both cases (old and new builds interoperate):
   - the **effigy identity lifecycle** (`effigy`, `StoreAuthority.Owner`, the shipped
     `ck.effigy.set`/`ck.effigy.clear` verbs). The store owns the announce latch (change / ~30 s
@@ -246,7 +257,7 @@ register verb handlers and send with it rather than touching Photon. Two notes w
     `Core.EffigyLedger` keeps only what a row *means* (species, tier, stance, anchor/body state).
     The stance mirror stays a separate `StateMirror` beside it.
   - the **guest-pet proxy lifecycle** (`proxy`, `StoreAuthority.Master`, the shipped
-    `ck.proxy.announce`/`ck.proxy.release` verbs — the 4C migration). The store owns
+    `ck.proxy.announce`/`ck.proxy.release` verbs). The store owns
     sender↔owner binding (`ProxyPets`' ownership rungs became its `ResolveUidOwner` callback),
     the reconnect rebind rule, the 45 s owner-missing backstop, disconnect/room teardown and
     release authorization; `ProxyPets` keeps only what a row means — a **bodiless `Companion`
@@ -255,7 +266,7 @@ register verb handlers and send with it rather than touching Photon. Two notes w
     actor), and the M→G event surface. The non-record verbs' guest half is the **injected
     `ICompanionNetMirror` seam** (below).
 
-**Guest net mirror (D3, 2026-07-26).** `CompanionCombat` no longer knows the `ck.proxy.*` protocol:
+**Guest net mirror.** `CompanionCombat` does not know the `ck.proxy.*` protocol:
 its target/stance mirroring and hit replay go through an injected `ICompanionNetMirror`. The
 consumer that speaks the proxy protocol sets the bond's factory once —
 `companion.NetMirrorFactory = ProxyPets.NewGuestMirror;` (Beastwhispering's `Pet` ctor) — and
@@ -266,7 +277,7 @@ Relatedly, the bond's `CombatMandate` seam (`Companion.CombatMandate`) injects "
 mandated?" into the anchor's convergent re-calm — null means the local rule (mandate ⇔ engaged
 stance); `ProxyPets` wires its guest-instructed-lock validation there.
 
-**Effigy extensibility (2026-07-26).** Two consumer seams on the cosmetic-body layer:
+**Effigy extensibility.** Two consumer seams on the cosmetic-body layer:
 
 - `CompanionEffigy.BodySettingsFactory` — set it to a `species => new MyEffigySettings(species)`
   factory to adjust effigy **body construction**: `EffigyBodySettings` is public
@@ -285,7 +296,7 @@ direct-drive vs normal following, plant/leash/grace rules, every threshold a nam
 field), the attribute codec (`CreatureAttributes.Flatten` / `Parse` is one save-safe string), the donor
 table, and the expedition manifest and warm policy.
 
-**Mount seams (2026-07-26).** Two `ICompanionSettings` knobs exist for a consumer whose owner *rides*
+**Mount seams.** Two `ICompanionSettings` knobs exist for a consumer whose owner *rides*
 the body (a mount mod) instead of being followed by it. Both default to today's behavior, so an
 ordinary companion consumer never touches them:
 
@@ -298,7 +309,7 @@ Related: `CompanionBody.LeashDistance` is genuinely honored at the zone trigger 
 `max(50, LeashDistance)`, so raising the leash past 50 m raises the zone trigger with it (the shipped
 default of 14 resolves to exactly the historical 50).
 
-**Honest strikes (`StrikeJudge`, 2026-07-26).** A companion's special attack, a scripted execute or
+**Honest strikes (`StrikeJudge`).** A companion's special attack, a scripted execute or
 any other *synthesized* hit bypasses the physics pipeline, so without a judge it always connects —
 blocks and dodge rolls would be meaningless against it. `CompanionKit.StrikeJudge` samples the target
 at the moment the hit would land and rules on it, mirroring the engine's own connect rules:
@@ -327,8 +338,7 @@ if (outcome == StrikeOutcome.Blocked)
 
 ### Persistence — `CompanionPersistence<TState>` + `CompanionSaveStore<TState>` + `BodyAcquisition`
 
-The companion save/re-form spine (lane 5B, 2026-07-26 — Beastwhispering's shipped machinery moved
-verbatim, rungs and policy parameterized). The split rule: **the kit owns the LIFECYCLE** — the
+The companion save/re-form spine. The split rule: **the kit owns the LIFECYCLE** — the
 sceneLoaded→player-ready state machine, the session-end teardown, the per-character file plumbing,
 the ONE cold-load identity funnel, and the body-acquisition ladder with its retry budget — and
 **the consumer owns the STATE**: `TState` is your schema, the codec is your hook, the kit never
@@ -381,7 +391,7 @@ What the kit guarantees (all pure-tested in `CompanionKit.Core.ReformFlow`/`Harv
   down (save untouched) before that player's own file loads.
 - **The cold-load identity gate** — every cold load funnels through your `SavedIdentityError`
   validator; a refusal logs loudly under `[PERSIST]` and keeps the file (the data is the player's
-  bond — deleting is never the gate's call). BW's stand-in-species gate (F5) rides this seam.
+  bond — deleting is never the gate's call). Beastwhispering's stand-in-species gate rides this seam.
 - **Ladder pacing** — the donor-harvest rung re-arms on a 60 s cooldown and immediately on a scene
   change, fires for ghost stand-in bodies too (upgrading them is the point), and PARKS loudly when
   the budget is spent. Spectral beats a crash.
@@ -392,7 +402,7 @@ arrival and quit-to-menu). Log lines emit through YOUR host's logger, so a consu
 contracts (BW's `[PERSIST]`/`[SAVE]` lines) survive the move byte-for-byte.
 
 Consumers today: **Beastwhispering** (all four rungs, `bw_pets_<uid>.txt`, behavior-identical to
-its pre-kit spine) and **Hireling** (Phase-2 v1: recruit survives relaunch — nearby rung only,
+its pre-kit spine) and **Hireling** (recruit survives relaunch — nearby rung only,
 `hl_folk_<uid>.txt`, position re-placed when reloading in the scene it was saved in).
 
 ### A native menu tab — `MenuTabInjector` + `MenuPanelBase`

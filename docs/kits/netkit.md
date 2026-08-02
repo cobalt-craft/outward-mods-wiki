@@ -187,10 +187,10 @@ ch.RegisterRequestHandler("mymod.spend", HandlerRole.RunOnMasterOnly, (msg, repl
 // pet, a broadcast spawn, a cosmetic effigy): the store owns existence,
 // identity, freshness, authority and flush — payload bytes and what a row
 // MEANS stay yours. Verb strings are configurable; byte-level interop with
-// pre-migration builds holds only where the consumer already carried the wire
-// key in the extra slot (ck.proxy.*/ck.effigy.*) — shipped sk.spawn/sk.gone
-// carry the uid in the payload instead, so old/new sk builds do NOT interop
-// (covered by the same-bundle cutover rule).
+// older builds holds only where the consumer already carried the wire key in
+// the extra slot (ck.proxy.*/ck.effigy.*) — shipped sk.spawn/sk.gone carry the
+// uid in the payload instead, so old/new sk builds do NOT interop (covered by
+// the same-bundle rule below).
 var store = ch.RegisterStore("proxy", new StoreOptions {
     Authority        = StoreAuthority.Master,   // owners announce → the master binds + holds rows
                                                 // (StoreAuthority.Owner = broadcast-to-Others shape:
@@ -266,26 +266,26 @@ store.FlushTo(actor);                  // Owner authority only: on-demand target
   row table (raising `OnSet` here) BEFORE the broadcast and regardless of the send outcome, so the
   announcing machine's own view never lags a transport outage; the latch still advances only on a
   landed send, so the wire side retries. Live consumers: CompanionKit's `effigy` store (Owner
-  authority, since the 4B migration) and its `proxy` store (Master authority — the guest-pet
-  proxy lifecycle, since the 4C migration), both on the `ck` channel with wire bytes identical
-  to the pre-store builds; and SpawnKit's `spawn` store (Owner authority, since the 4D migration)
+  authority) and its `proxy` store (Master authority — the guest-pet
+  proxy lifecycle), both on the `ck` channel with wire bytes identical
+  to the pre-store builds; and SpawnKit's `spawn` store (Owner authority)
   on the `sk` channel — see the cutover note below. NB a Master-authority consumer's OWNER side
   may keep hand-sending the
   same bytes instead of using the store's `Announce` book (the proxy's guest half does — its
   cadence is entangled with consumer policy); the store's receive half neither knows nor cares.
-- **⚠ `sk` WIRE CUTOVER at SpawnKit 0.4.0 (the 4D migration) — old and new builds do NOT interop.**
+- **⚠ `sk` WIRE CUTOVER at SpawnKit 0.4.0 — old and new builds do NOT interop.**
   Migrating a consumer onto the store is byte-transparent only if it ALREADY carried its wire key
   in the message `extra` slot, which `ck.proxy.*`/`ck.effigy.*` did. `sk.spawn`/`sk.gone` did not:
   the shipped build sent `extra=""` with the spawn uid inside the payload. The payload bytes are
-  unchanged and the uid still rides inside them, but the KEY half moved, so a pre-4D announce
-  decodes an empty wire key at a 4D receiver and drops `empty-key`, and a pre-4D `sk.gone` drops
-  `no-row`. Channel compatibility is exact ordinal version equality, so the remedy is the version:
-  SpawnKit went `0.3.1` → `0.4.0` and a mixed pair now refuses LOUDLY at the handshake rather than
-  connecting and silently dropping every spawn. Payload-format compatibility is NOT interop — do
-  not read it as such. **The general rule this instantiates: if a consumer's shipped messages did
-  not already carry the wire key in `extra`, migrating it to a store is a breaking wire change, and
-  the channel version MUST be bumped in the same commit.** Both boxes on the same bundle is the
-  standing NetKit cutover rule; this is its second exercise.
+  unchanged and the uid still rides inside them, but the KEY half moved, so a pre-0.4.0 announce
+  decodes an empty wire key at a 0.4.0 receiver and drops `empty-key`, and a pre-0.4.0 `sk.gone`
+  drops `no-row`. Channel compatibility is exact ordinal version equality, so the remedy is the
+  version: SpawnKit went `0.3.1` → `0.4.0` and a mixed pair now refuses LOUDLY at the handshake
+  rather than connecting and silently dropping every spawn. Payload-format compatibility is NOT
+  interop — do not read it as such. **The general rule this instantiates: if a consumer's shipped
+  messages did not already carry the wire key in `extra`, migrating it to a store is a breaking
+  wire change, and the channel version MUST be bumped in the same commit.** Both boxes on the same
+  bundle is the standing NetKit rule.
 - **The store owns the lifecycle, not the meaning.** Sender↔owner authorization (defer on an
   unresolvable uid, refuse a non-owner), the rebind rule (a new actor may claim a key only after
   the bound actor actually left — a reconnect, never a live hijack), release authorization (only

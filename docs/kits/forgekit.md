@@ -20,8 +20,10 @@ ForgeKit itself does nothing on its own — you install it because another mod d
 requirement. But every mod built on it exposes one thing you *can* touch directly, with nothing more
 than a text editor: **the command channel.**
 
-Each mod that uses ForgeKit watches its own plain-text file, `BepInEx/config/<Mod>_cmd.txt` (e.g.
-`Beastwhispering_cmd.txt`). While the game is running, open that file in any text editor, type a verb
+Each mod that uses ForgeKit watches its own plain-text file under `BepInEx/config/` — the names are
+not uniform (`bw_cmd.txt` for Beastwhispering, `ck_cmd.txt` for CompanionKit, `SpawnKit_cmd.txt`,
+`DangerousRoads_cmd.txt`, and so on; each mod's page names its own). While the game is running, open
+that file in any text editor, type a verb
 on its own line, save the file — and the mod runs it on its next poll (a fraction of a second later,
 even if the game is paused). This is a **file pipe**: your text editor and the running game are two
 separate programs, and the file is the mailbox between them. No console, no cheat menu, nothing
@@ -34,10 +36,9 @@ console, it's whatever the mod's author chose to expose for testing and troubles
 varies mod to mod. If you're playing co-op, note that some verbs are host-only (moving the whole
 party's clock or location) precisely because a guest firing them would desync the session.
 
-This is also how the mod bundle's remote tools work under the hood: `Stream-Logs.bat` and
-`Command-Relay.bat` (see the main README) are just automated versions of "watch/write this same
-file," routed over the network so a tester on a different machine can be helped without them typing
-anything themselves.
+Because it is only a file, the same loop can be automated: anything that can write that file — a
+script, a watcher, a helper on another machine — can drive a mod's verbs without the player typing
+anything.
 
 ## What's in it
 
@@ -65,6 +66,8 @@ into `BepInEx/config/YourMod_cmd.txt` runs that verb on the next poll:
 - A verb that throws is caught and logged, so one bad line in a batch doesn't kill the rest.
 - Unknown verb, empty input, or the literal `help` prints the full registered verb list with help
   text.
+- Every channel registers `script`, `scriptcancel` and `scriptstatus` itself, so any consumer can run
+  a timed sequence of its own verbs from one file write.
 
 Keybinds can drive the same verbs directly (`channel.Run("somedump")`), so a mod's F-keys and its
 command file share one code path.
@@ -78,10 +81,13 @@ opt out of individually.
 | Domain | Verbs |
 |---|---|
 | Items | `give`, `drop`, `useitem`, `givewater`, `equip`, `unequip` |
-| World | `teleport`, `goto`, `settime`, `givemoney` |
-| Combat | `sethp`, `combatclear`, `killnearest` |
-| Skills | `learnskill`, `unlearnskill`, `resetcooldowns` |
-| Engine diagnostics | `statusdump`, `scenedump`, `skydump`, `groundprobe`, `combatmgrdump`, `keybinds`, `ragdolldump`, `psdump` |
+| World | `teleport`, `goto`, `settime`, `givemoney`, `face`, `moveto` |
+| Combat | `sethp`, `combatclear`, `killnearest`, `swing`, `lockon`, `lockoff` |
+| Skills | `learnskill`, `unlearnskill`, `resetcooldowns`, `castspell` |
+| Status | `grantstatus`, `removestatus` |
+| Engine diagnostics | `statusdump`, `pos`, `scenedump`, `skydump`, `groundprobe`, `combatmgrdump`, `keybinds`, `ragdolldump`, `psdump` |
+| Containers | `containerdump`, `containerroll` |
+| Resilience | `unstick` (alias `unwedge`) |
 | Config | `reloadcfg` (only when the consuming mod hands the pack its config file — see below) |
 
 A few highlights:
@@ -92,9 +98,19 @@ A few highlights:
 - `goto <scene> [spawnPoint]` / `teleport <x> <y> <z>` / `settime <hour>` — world staging. `goto` and
   `settime` are host-only (a guest driving them would desync a co-op party).
 - `learnskill <name-or-ItemID>` / `unlearnskill <name-or-ItemID\|all>` — teach or forget any skill,
-  so a test save doesn't need a cheat menu.
+  so a test save doesn't need a cheat menu. `castspell <name-or-ItemID>` then casts a *learned* skill
+  through the real quickslot pipeline (requirements, cooldown and mana all apply for real).
+- `moveto <nearest\|species> [gap]` / `face <…>` / `lockon` / `swing` — stage and land a real attack
+  on a real creature from the command file, without a hand on the keyboard.
+- `grantstatus <status-name> [target=player\|pet] [force]` / `removestatus` — apply or clear a status
+  the vanilla way. `target=pet` only answers on a channel whose mod supplied a pet accessor; elsewhere
+  it says so rather than silently acting on the player.
 - `keybinds` — report every key claimed by every mod in the family, grouped by key, with conflicts
   flagged (see the keybind registry below).
+- `unstick` (alias `unwedge`) — the last-resort verb for a session that has stopped responding: bare
+  it dumps the load-gate/pause/timescale state and changes nothing, `unstick fix` applies the
+  smallest repair that fits, and `unstick force <step>` overrides a refusal you have read and
+  accepted.
 - `reloadcfg` — re-read that mod's `.cfg` from disk. BepInEx 5 has **no config file-watcher**, so a
   hand-edited config does nothing until this verb runs (or the game relaunches). It registers only
   when the mod supplies its config file, because `BaseUnityPlugin.Config` is `protected` — only code
@@ -179,12 +195,11 @@ The same file pipe described above for players is, from a modder's side, a ready
 the same way a human editing `<Mod>_cmd.txt` would: write a verb, poll the log for the result, repeat.
 Nothing special has to be built for this — it's the ordinary command channel, used programmatically
 instead of by hand. This family's own live-test workflow works exactly this way: a test-runner writes
-verbs into the channel and reads `LogOutput.log` for `[TAG]`-prefixed results, closing hundreds of
-test items across unattended sessions without a human at the keyboard. `script`/`scriptcancel`/
-`scriptstatus` (registered by `CommonVerbs`, see `docs/script-verb-testplan.md`) extend this further —
-a whole timed sequence of verbs (`step ; wait 1s ; step ; ...`) runs from a single file write, which
-matters most when the write itself is expensive (e.g. relayed over a network to a remote/guest
-machine — see `scripts/nas-cmd.sh`). If your mod's verbs are meant to be automation-friendly, keep
+verbs into the channel and reads `LogOutput.log` for `[TAG]`-prefixed results, with no human at the
+keyboard. Every `CommandChannel` also registers `script` / `scriptcancel` / `scriptstatus` on its own
+— a whole timed sequence of verbs (`step ; wait 1s ; step ; ...`) runs from a single file write,
+which matters most when the write itself is expensive (relayed over a network to a remote or guest
+machine, say). If your mod's verbs are meant to be automation-friendly, keep
 their output greppable (one clearly-tagged log line per outcome) — that log line *is* the automation's
 return value.
 
@@ -220,7 +235,7 @@ phantom conflicts. The `keybinds` verb dumps the whole registry on demand.
 
 - [Kits index](./README.md)
 - [Installing](../installing.md)
-- Kits that build on ForgeKit: [AggroKit](./aggrokit.md), [NetKit](./netkit.md),
-  [SkillKit](./skillkit.md), [StoryKit](./storykit.md), [CompanionKit](./companionkit.md),
-  [SpawnKit](./spawnkit.md)
+- Kits that build on ForgeKit: [AggroKit](./aggrokit.md), [DonorKit](./donorkit.md),
+  [EnchantKit](./enchantkit.md), [NetKit](./netkit.md), [SkillKit](./skillkit.md),
+  [StoryKit](./storykit.md), [CompanionKit](./companionkit.md), [SpawnKit](./spawnkit.md)
 - [Wiki home](../README.md)

@@ -30,7 +30,7 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 
 | Verb | What it does |
 |---|---|
-| `tame` | Tame the nearest wild creature (the F7 action). |
+| `tame` (alias `clonevisual`) | Tame the nearest wild creature (the F7 action). |
 | `recall` | Recall the pet to your feet; re-forms a bodiless pet. |
 | `release` | Release the pet — full teardown, ends the bond, **deletes the pet's save file**. Irreversible, so it is guarded: the first call only warns and arms a 30-second window; `release confirm` (or calling `release` again inside the window, at least a second later — two `release` lines in one command-file write do NOT confirm each other) is what actually does it. Tune the guard with `[Systems] ReleaseConfirmLoyaltyThreshold`. |
 | `resummon` | Re-form the pet's body now. |
@@ -44,6 +44,7 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 | `petpanel` | Dump the Companion-tab display model to the log (data check with no menu open). |
 | `petsound` | Play the species attack/hurt/death sounds in sequence. |
 | `vocals` | Toggle the body-synced species attack vocal live. |
+| `bodycensus` | List every live companion body on this machine (id, species, origin, age, claim state). |
 
 ## Feeding & items
 
@@ -65,10 +66,10 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 | `gift` | Cast the Gift skill body (skill-free). |
 | `engage` / `disengage` / `petcommand` | The Command Pet skill's two orders and the toggle. |
 | `special` | Fire the pet's Hunt as One signature attack. |
+| `petsigil <Fire\|Frost\|Air\|Blood> [here]` | The pet lays its own sigil circle at its feet (`here` drops it at yours). |
 | `huntasonesync` | Diagnostic for the Hunt as One / pet-special cooldown sync. |
 | `synergy <0-4>` | Set the Synergy stack count for testing. |
 | `ftk` | Cast For the Kill (skill-free). |
-| `setcourage <0-5>` | Set the species-relic stack count. |
 | `travelcheck` / `travelcross` | Inspect / drive the Wild Unknown region-travel gate headlessly. |
 | `marenstatus` / `marenspawn` / `marendespawn` / `marenhere` | Inspect, spawn, despawn, or re-place the trainer NPC (`marenhere` stamps her at your current spot). |
 
@@ -89,20 +90,21 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `geardump` | Equipped-gear effects. |
 | `weatherdump` | Weather-food buff state. |
 | `scentdump` | Scent-sense table & tracker. |
-| `scavengedump` | Scavenge-bonus table & armed fill. |
+| `scavengedump` / `scavengesim` | Scavenge-bonus table & armed fill / simulate the nearest container's drop tables many times, with and without the pet's scavenge dice (opens nothing, changes nothing). |
 | `giftdump` | Gift drop table & loyalty-lerped mix. |
 | `fletchdump` | Feather-fletch registration & held-ammo state. |
 | `buffdump` / `bufffooddump` | Bond buffs / buff-food state. |
 | `synergydump` / `ftkdump` / `killfavordump` | Synergy, For the Kill, kill-favor state. |
 | `boltdump` / `firebolt` | Ranged-special rig census / headless test fire. |
-| `bracedump` / `brace` / `tauntdump` | Brace stance state (including its aggro-pin) / force-enter / taunt state. |
+| `bracedump` / `brace` / `tauntdump` / `taunt [name]` | Brace stance state (including its aggro-pin) / force-enter / taunt pipeline state / force a short taunt onto the nearest (or named) enemy. |
+| `hitfxdump` | What the equipped weapon would proc on a Hunt as One / For the Kill strike. |
 | `echodump` / `echo` | Skill-echo roster / trigger. |
 | `warddump` / `lanterndump` | Ward-share / lantern-share state. |
 | `bandagedump` | Bandage-to-pet pipeline (resolved item/status, live anchor state, last action). |
 | `foodcats` | The 8 food-category tags → live tag names/UIDs. |
 | `speciesaudit` | Cross-table check for tameable-but-missing rows. |
 | `statusicons` | Pet status-icon pipeline (inputs → wanted → the player's actual statuses). |
-| `caravandump` / `caravanhere` / `caravanspawn` | Caravanner scent-sense diagnostics. |
+| `caravandump` / `caravanhere` / `caravanspawn` / `caravanreroll` | Caravanner scent-sense diagnostics / re-run the caravanner's own vanilla spawn roll (host or solo only). |
 | `musicdump` / `musiccheck` | Combat-music state snapshot. |
 | `recipedump` | Crafting-recipe registration & learned state. |
 | `registrydump` | Write item/status/scene registries to `BepInEx/config/bw_registries/` (feeds `bwspecies check`). |
@@ -111,7 +113,8 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `visdump` / `visfix` | Puppet draw-readiness dump / repair. |
 | `yaw <deg>` | Live rig-facing tune for a body that walks sideways/backward (persist the winner in `[Pet] SpeciesYawOffsets`). |
 | `animdump` / `posdump` / `compdump` / `drifttest` | Animator / position / component / drift diagnostics. |
-| `combatcheck` | Combat-state readout. |
+| `combatcheck` | Player combat state + the anchor weld health. |
+| `groundprobe` | Measure the navmesh under the player, puppet and anchor (Beastwhispering's pet-aware version of the shared verb). |
 | `sniff` | Force a scent scan now. |
 | `selftest` | Run the compute-layer self-test (F10). |
 
@@ -133,36 +136,52 @@ is still boot-time — a brand-new species needs a relaunch):
 | Verb | What it does |
 |---|---|
 | `expedition <scene\|species>` | Run a donor-region round trip to cache a region-only creature's body. |
-| `harvest` | Harvest a donor body for a species. |
+| `harvest <scene> <creature>` | Additively load a donor scene and clone a creature out of it. |
 | `tamecached` | Tame from a cached body template. |
 | `templateprobe` / `templateclear` | Inspect / clear the body-template cache. |
 
-## Test-state & staging (shared ForgeKit verbs)
+## Test-state controls
 
-Beastwhispering inherits the **CommonVerbs** pack from [ForgeKit](../../kits/forgekit.md), so these
-answer on `bw_cmd.txt` too. They spawn items, teleport, stage combat, and manipulate character state
-for unattended test sessions.
+Beastwhispering's own staging verbs — they place the pet's simulation exactly where a test needs it.
 
 | Verb | What it does |
 |---|---|
-| `give [pouch\|bag\|ground] [qty] <name-or-id>` | Spawn any item. |
-| `drop [qty] <name-or-id>` | Drop an item on the ground ahead of you. |
-| `useitem <name-or-id>` | Use the first matching inventory item through the real Use pipeline. |
-| `givewater [type]` | Spawn a filled waterskin (clean/river/salt/rancid/…). |
-| `givemoney <n>` | Add silver. |
-| `equip <name-or-id>` / `unequip <slot>` | Equip / unequip gear (spawns the item if absent). |
-| `learnskill <name-or-id>` / `unlearnskill <name-or-id\|all>` | Teach / forget any skill. |
-| `resetcooldowns` | Reset every learned skill's cooldown. |
-| `teleport <x> <y> <z>` / `goto <scene> [spawn]` | Move the player. |
-| `settime <hour>` | Set the game clock. |
-| `sethp <pet\|player> <n\|n%>` | Set health (floored at 1 — never a death path). |
-| `setloyalty <0-100>` | Set pet loyalty (0 needs `force`). |
-| `sethunger <0-1.5>` | Place the hunger clock. |
-| `simskip <seconds>` | Fast-forward the pet sim (decay, drains, expiries all apply). |
+| `setloyalty <0-100>` | Set pet loyalty (dropping to 0 is abandonment and needs `setloyalty 0 force`). |
+| `sethunger <0-1.5>` | Place the hunger clock, as a fraction of the hunger day (`1.0` = starving). |
+| `setcourage <0-5>` | Set the species-relic stack count. |
+| `simskip <seconds>` | Fast-forward the pet sim — decay, drains and expiries all apply honestly. |
+| `sethp <pet\|player> <n\|n%>` | Set health, floored at 1 (Beastwhispering's pet-aware version of the shared verb — death still needs real damage). |
 | `aggro <me\|pet> [name]` / `pacify [radius]` | Force / clear enemy aggro. |
-| `killnearest [species] [radius]` | Overkill the nearest wild creature through the real damage pipeline. |
-| `combatcheck` / `combatclear` | Read / clear combat state. |
-| `scenedump` / `statusdump` / `skydump` / `ragdolldump` / `psdump` / `combatmgrdump` / `keybinds` | Engine-state dumps. |
+
+## Shared verb packs
+
+Three libraries register their own verb packs onto `bw_cmd.txt`, so their verbs answer here without a
+second command channel.
+
+**[ForgeKit](../../kits/forgekit.md) CommonVerbs** — generic staging and engine diagnostics:
+
+| Group | Verbs |
+|---|---|
+| Items | `give [pouch\|bag\|ground] [qty] <name-or-id>` · `drop` · `useitem` · `givewater [type]` · `equip` · `unequip <slot>` |
+| World | `teleport <x> <y> <z>` · `goto <scene> [spawn]` (host only) · `settime <hour>` (host only) · `givemoney <n>` · `face` · `moveto` |
+| Combat | `combatclear` · `killnearest [species] [radius]` · `swing` · `lockon` · `lockoff` |
+| Skills | `learnskill` · `unlearnskill <name-or-id\|all>` · `resetcooldowns` · `castspell` |
+| Status | `grantstatus <name> [target=player\|pet] [force]` · `removestatus` |
+| Engine dumps | `statusdump` · `pos` · `scenedump` · `skydump` · `combatmgrdump` · `keybinds` · `ragdolldump` · `psdump` |
+| Containers | `containerdump [radius]` · `containerroll [filter] [radius] [fresh\|reopen]` (host only) |
+| Recovery | `unstick` (alias `unwedge`) — diagnose and recover a wedged session |
+
+The pack's own `sethp` and `groundprobe` are **not** registered here: Beastwhispering ships pet-aware
+supersets of both, listed above.
+
+**[SkillKit](../../kits/skillkit.md)** (it has no channel of its own): `castdump` · `castclear` ·
+`skillverify` · `skilldump <name>` · `skillitemdump [name]` · `skillkitreloadcfg`.
+
+**[DonorKit](../../kits/donorkit.md)** donor-harvest diagnostics: `photondump` · `audiodump` ·
+`audioprune` · `terraindump` · `terrainfix`.
+
+ForgeKit's command channel itself also provides `script` · `scriptcancel` · `scriptstatus` for
+running a queued sequence of verbs.
 
 ## See also
 

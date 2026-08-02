@@ -8,8 +8,9 @@ fights at your side, and grows more useful the more it trusts you.
 - Type: gameplay mod
 - Requires: BepInEx 5 (Mono branch), SideLoader, and its kits ([ForgeKit](../../kits/forgekit.md),
   [SkillKit](../../kits/skillkit.md), [CompanionKit](../../kits/companionkit.md),
-  [StoryKit](../../kits/storykit.md), [AggroKit](../../kits/aggrokit.md),
-  [NetKit](../../kits/netkit.md)) — all pulled in automatically. See [Installing](../../installing.md).
+  [StoryKit](../../kits/storykit.md), [AggroKit](../../kits/aggrokit.md), and — through
+  CompanionKit — [DonorKit](../../kits/donorkit.md) and [NetKit](../../kits/netkit.md)) — all
+  pulled in automatically. See [Installing](../../installing.md).
 - Config: `BepInEx/config/cobalt.beastwhispering.cfg`
 - Commands: `BepInEx/config/bw_cmd.txt`
 
@@ -27,6 +28,11 @@ Only certain species can be tamed — see [Creatures](./creatures.md).
 > it follows, fights, feeds, bonds and persists in co-op just as it does solo. Tame your companion
 > solo, then take it into co-op. This is a bug, not a design decision, and we are working diligently
 > to resolve it.
+
+Everything *after* taming works in **co-op** as well as solo — host and guests each keep their
+own pet, which follows, fights, feeds, bonds and persists per player. Both machines must be running
+the same version of the mod set; a mismatched pair refuses to link up rather than misbehaving
+quietly.
 
 ### Getting started
 

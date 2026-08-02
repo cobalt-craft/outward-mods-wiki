@@ -55,6 +55,17 @@ Releasing a pet frees it and clears its saved bond — you can then tame a new o
 through the `release` dev command (see [Dev verbs](./dev-verbs.md)). Abandonment (letting loyalty fall
 to nothing) also ends the bond permanently — see [Loyalty & bonds](./loyalty-and-bonds.md).
 
+## Limitations
+
+- **One pet at a time.** While you have a companion, chow is simply refused ("You already have a
+  companion.") — it is never spent and the pet is never swapped. Release the first, or lose it, to
+  tame another.
+- **Taming itself is single-player only right now** — see the known issue above. The co-op notes
+  below describe how the pet systems behave once you bring an already-tamed companion into a
+  session.
+- **Co-op needs matching versions.** If the host and a guest run different versions of the mod set,
+  the session refuses to link the pet systems instead of half-working.
+
 ## See also
 
 - [Feeding & diet](./feeding-and-diet.md) — chow ingredients and everyday feeding

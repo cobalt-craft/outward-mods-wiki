@@ -44,7 +44,7 @@ Free-text `notes` may sit alongside; they are documentation only and are never c
 | `buffFoods` | Fed consumables that grant a temporary damage buff. Independent of `diet`: an item in both is fed as a meal **and** buffs, off one item; an item only here buffs without feeding | `BuffFoods.json` |
 | `skillEchoes` | Per-skill overrides for the pet's bonus strike on your weapon skills | `SkillEchoes.json` |
 | `loyaltyGrowth` | How the pet's stats grow with loyalty (per stat group, percent at 100) | `SpeciesGrowth.txt` |
-| `donorScenes` / `donorObject` | Which scenes the creature's body can be harvested from | `DonorScenes.txt` (CompanionKit) |
+| `donorScenes` / `donorObject` | Which scenes the creature's body can be harvested from | `DonorScenes.txt` ([DonorKit](../../kits/donorkit.md)) |
 | `yaw` | Rig-facing correction if the model walks sideways/backward | `SpeciesYawOffsets.txt` |
 
 A few tables are **global**, not per-creature: the consumable blankets (`data/blankets.json`) and the
@@ -83,7 +83,26 @@ produced in-game with the **`registrydump`** dev verb, then copied into `data/re
 | `names` | Rewrite any raw numeric IDs in the manifests back to display names (round-trip-safe). |
 | `seed` | Fill comfort bands from wiki region data (non-destructive). |
 | `build` | Regenerate the embedded shipped tables from the manifests. |
+| `build --check` | Report (without writing) whether any shipped table has drifted from the manifests. |
+| `ids list` / `ids alloc` / `ids gen` / `ids check` | Inspect, claim, emit and verify the mod's item and status IDs (see below). |
 | `import` | Read the shipped tables back into `data/species/*.json` manifests (a one-time bootstrap). |
+
+## IDs are allocated, never typed
+
+Every ID this mod registers — items, recipes, status and effect presets — is drawn from an ID range
+allocated to this workspace by the Outward modding community, and recorded in a ledger. The generated
+constants, the SideLoader pack XMLs and the item registry are all **written from that ledger** by
+`bwspecies ids gen`, and `bwspecies ids check` fails the build if any ID-shaped literal in the tree
+isn't accounted for. Adding a new tamable species needs no manual step: its chow and recipe-scroll
+IDs are allocated for you.
+
+The practical consequence for authors: **never hand-type a numeric ID into a manifest or into code**.
+Write display names (above) and let the tool resolve them.
+
+> **Note for players on old saves.** The ID range moved once. A character created before that move
+> loses its Beastwhispering custom items, its learned Beastwhispering skills, and the enchantment on
+> any arrows fletched with pet feathers. Tamed pets themselves are unaffected — re-buy the skills
+> from the trainer and re-craft the items.
 
 ## Adding or editing a creature
 

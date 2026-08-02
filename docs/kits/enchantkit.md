@@ -70,12 +70,17 @@ unique, so when two enchantments share a name the lowest PresetID is chosen.
 
 | Section | Key | Default | Effect |
 |---|---|---|---|
-| `Enchant` | `EnableEnchantKit` | `true` | Kill-switch. When `false`, the mutating verbs (`enchant`, `unenchant`, `giveenchanted`) refuse **and** the shared ForgeKit dev-verb pack is not registered at all; the read-only diagnostics (`enchantlist`, `enchantdump`, `enchantregistry`) keep working. The mutating verbs read the setting live, so `reloadcfg` flips them with no relaunch; the dev-verb pack is registered at startup, so restoring it needs a relaunch. |
+| `Enchant` | `EnableEnchantKit` | `true` | Kill-switch. When `false`, the mutating verbs (`enchant`, `unenchant`, `giveenchanted`) refuse **and** the item / world / combat / skill / engine-diagnostic half of the shared ForgeKit dev-verb pack is not registered; the read-only diagnostics (`enchantlist`, `enchantdump`, `enchantregistry`) keep working. The mutating verbs read the setting live, so `reloadcfg` flips them with no relaunch; the dev-verb pack is registered at startup, so restoring it needs a relaunch. |
 
 > **Installing EnchantKit with the kit enabled exposes the shared dev-verb pack on
 > `EnchantKit_cmd.txt`** — `give`, `drop`, `equip`, `teleport`, `goto`, `givemoney`, `killnearest`,
-> `learnskill` and the engine dumps. That is a dev console, not just an enchanting tool. Set
-> `EnableEnchantKit = false` (and relaunch) on an install where that surface is not wanted.
+> `learnskill`, `castspell` and the engine dumps. That is a dev console, not just an enchanting tool.
+> Set `EnableEnchantKit = false` (and relaunch) on an install where that surface is not wanted.
+>
+> Turning it off does **not** remove the whole pack: `grantstatus` / `removestatus`,
+> `containerdump` / `containerroll`, `unstick` and `reloadcfg` stay registered either way —
+> `reloadcfg` deliberately so, since a disabled install must still be able to re-read its config and
+> turn itself back on.
 
 ### Example configuration
 
@@ -127,9 +132,12 @@ enchantlist Fire
 ```
 
 While the kit is enabled, EnchantKit also registers ForgeKit's **CommonVerbs** pack on this same
-channel (`give` / `drop` / `equip` / `teleport` / `goto` / `killnearest` / `learnskill` / … ), so a
-test session can stage the surrounding scenario — the gear, the enemy, the position — right beside
-the enchant commands. Setting `EnableEnchantKit = false` removes that pack too (see Settings).
+channel (`give` / `drop` / `equip` / `teleport` / `goto` / `moveto` / `lockon` / `swing` /
+`killnearest` / `learnskill` / … ), so a test session can stage the surrounding scenario — the gear,
+the enemy, the position, the attack — right beside the enchant commands. Setting
+`EnableEnchantKit = false` removes most of that pack (see Settings). Every ForgeKit channel also
+carries `script` / `scriptcancel` / `scriptstatus`, so a whole staged sequence can run from one file
+write.
 
 ## For modders
 

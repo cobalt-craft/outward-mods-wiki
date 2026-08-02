@@ -53,6 +53,18 @@ rest. It shows the pet's full sheet in one place:
 With no pet, the tab shows a styled empty state. Cycle to it with the menu's tab controls like any
 other tab.
 
+## Known issues & limitations
+
+- **The pet is not a second character.** It has no gear slots, no skills of its own to assign, and no
+  inventory; everything it does comes from its species data and the skills *you* learn.
+- **Ranged signature attacks are only reachable on species you can't yet tame.** The tameable roster's
+  signatures are all melee, Brace or hex bites — see [Creatures](./creatures.md).
+- **Sigil synergies, worn-gear effects, the scavenge bonus and the damage-scale settings are newer,
+  lightly-exercised systems.** They are all data-driven and each has its own kill-switch in the
+  config, so if one behaves oddly you can turn just that system off.
+- **In co-op, some effects the host resolves show no floating damage numbers on a guest's screen**,
+  and a guest's Companion tab reads "no anchor" on the anchor-health rows. The damage itself lands.
+
 ## See also
 
 - [Skills](./skills.md) — Hunt as One, Command Pet, Wild Unknown, and the rest

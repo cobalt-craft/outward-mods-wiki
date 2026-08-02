@@ -18,8 +18,9 @@ loads. It's a modder's library.
 - Type: reusable library (kit)
 - Requires: BepInEx 5 (Mono branch), [ForgeKit](forgekit.md), and **SideLoader present at runtime**
 - Plugin GUID: `cobalt.skillkit`
-- Config: none
-- Commands: dev verbs registered onto a consumer's command channel (see [Commands](#commands))
+- Config: `BepInEx/config/cobalt.skillkit.cfg`
+- Commands: no channel of its own — dev verbs are registered onto a consumer's command channel (see
+  [Commands](#commands))
 
 ## For players
 
@@ -58,11 +59,30 @@ the mod calls `SkillRegistry.Register(...)` once per skill. SkillKit then takes 
   `player.Inventory.SkillKnowledge.IsItemLearned(itemId)` wherever the passive should change
   behavior. Passives are never quickslotable.
 
+## Settings
+
+`BepInEx/config/cobalt.skillkit.cfg`, generated on first launch. SkillKit has a single setting.
+
+| Section | Key | Default | Effect |
+|---|---|---|---|
+| `MP` | `EnforceLocalCaster` | `true` | In co-op the game replays every cast on every machine, so a skill's effect would otherwise fire on all of them. With this on, a skill effect runs only for the player who actually cast it. Turn it off only to diagnose a local cast that was wrongly suppressed — left off in co-op it brings back shared cooldowns, duplicated skill effects and casts landing on the wrong player. |
+
+### Example configuration
+
+`BepInEx/config/cobalt.skillkit.cfg` — created on first launch. Excerpt:
+
+```ini
+[MP]
+## Suppress skill-effect execution for casts that arrive over the network from another player
+## (the vanilla pipeline replays every cast on every machine).
+EnforceLocalCaster = true
+```
+
 ## Commands
 
-SkillKit has no configuration file of its own (`Config: none`) and runs no command channel of its
-own. It exposes a dev-verb pack that a consuming mod registers onto its own channel
-(`SkillVerbs.RegisterAll(...)`); the verbs then answer on that mod's `BepInEx/config/<mod>_cmd.txt`.
+SkillKit runs no command channel of its own. It exposes a dev-verb pack that a consuming mod
+registers onto its own channel (`SkillVerbs.RegisterAll(...)`); the verbs then answer on that mod's
+`BepInEx/config/<mod>_cmd.txt`.
 
 | Verb | Effect |
 |---|---|
@@ -71,6 +91,7 @@ own. It exposes a dev-verb pack that a consuming mod registers onto its own chan
 | `skillverify` | Wire-check every registered skill: prefab resolved, effect host present, icon sprites mapped. Logs PASS/FAIL per skill. |
 | `skilldump <name-substring>` | Dump learned skills whose name contains the substring, with their live cast fields. |
 | `skillitemdump [name]` | Browse loadable Skill-type item prefabs (useful for picking a donor ItemID). |
+| `skillkitreloadcfg` | Re-read `cobalt.skillkit.cfg` from disk. SkillKit has no channel of its own and a consumer's `reloadcfg` only reloads *that* consumer's config, so this is the kit's live config lever. |
 
 ## For modders
 
@@ -159,9 +180,8 @@ the trainer tree, skill menu, and learn toast.
 | `SkillRegistry.Find(itemId)` | Look up a registered `SkillSpec`. |
 | `SkillCooldowns.Sync(itemId, player, seconds)` | Stamp a cooldown onto the prefab + learned instances; call from your config-reload path. |
 | `SkillCooldowns.RefundNextFrame(itemId, player, tag, reason)` | Cancel a just-started cooldown next frame. |
-| `SkillVerbs.RegisterAll(registry, log, playerFn)` | Register SkillKit's dev verbs onto your command channel. |
-
 | `SkillRegistry.SyncCooldowns(player)` | Re-stamp every spec's `CooldownSeconds`; also runs on the kit's own ~2s tick. |
+| `SkillVerbs.RegisterAll(registry, log, playerFn)` | Register SkillKit's dev verbs onto your command channel. |
 
 `SkillSpec` fields: `ItemId`, `Label`, `OnCast`, `OnCastResult` (the refusable form), `Passive`,
 `Icon` (a `DynamicIcon`), `CastAnim` (a `Func<Character, CastPick>`), `CooldownSeconds` (a
@@ -236,10 +256,8 @@ That invariant was learned twice independently; it is stated once, in `IconPin`.
 ## Custom status effects — `SlStatus`
 
 Ship an indicator/timer status of your own (a HUD badge for your mod's state, a stacking buff, a
-timed boon) by cloning a plain vanilla status. Added 2026-07-26, lifted out of Beastwhispering,
-which had three of these; it lives here because it is deeply SideLoader-typed, exactly like the
-skill registration this kit already owns. **Built, not yet live-verified in kit form** — behaviour
-is the shipped BW mechanism verbatim (regression row: `docs/status-icons-testplan.md` V15).
+timed boon) by cloning a plain vanilla status. It lives here because it is deeply SideLoader-typed,
+exactly like the skill registration this kit already owns.
 
 Bind the consumer context once at boot, then register from your `SL.OnPacksLoaded` handler:
 

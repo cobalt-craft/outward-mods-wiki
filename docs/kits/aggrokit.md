@@ -76,6 +76,10 @@ stealth), redirect detections onto a decoy, or make a character's hits generate 
 The detection-side control patches and the targetability override gate are always installed but stay
 inert until a command or a mod activates them, so they cost nothing when unused.
 
+Edit the file with the game closed: AggroKit does not take ForgeKit's shared verb pack, so it has no
+`reloadcfg` verb and every change here — including a `DumpKey` rebind — is picked up at the next
+launch.
+
 ### Example configuration
 
 `BepInEx/config/cobalt.aggrokit.cfg` — created on first launch. Excerpt:
@@ -83,6 +87,7 @@ inert until a command or a mod activates them, so they cost nothing when unused.
 ```ini
 [Dev]
 EnableCommandFile = true
+EnableDumpKey = true
 DumpKey = F3
 
 [Research]
@@ -101,7 +106,8 @@ Write a verb into `BepInEx/config/ak_cmd.txt` and it runs on the next poll (even
 paused). Unknown verb or `help` lists them all. The dump key (default **F3**) runs `aggrodump`.
 
 AggroKit uses the command channel **only** — it deliberately does not adopt ForgeKit's shared
-`CommonVerbs` pack, so its verbs are exactly the aggro-focused set below.
+`CommonVerbs` pack, so its own verbs are exactly the aggro-focused set below (plus the
+`script` / `scriptcancel` / `scriptstatus` sequencing verbs every ForgeKit channel carries).
 
 | Verb | Does |
 |---|---|

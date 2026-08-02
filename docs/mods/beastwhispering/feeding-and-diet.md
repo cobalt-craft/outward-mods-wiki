@@ -73,6 +73,16 @@ item against its ordinary diet instead.
 Which foods, buffs, and relics a species takes is data-driven per creature — see
 [Data manifests](./data-manifests.md).
 
+## Limitations
+
+- **A satiated pet refuses everything**, including its Bond food and a relic. Wait out the satiation
+  window rather than assuming the feed is broken.
+- **Buff foods, relics and the over-time health regen are newer systems.** Each is data-driven per
+  species and each has a config kill-switch, so a misbehaving one can be turned off on its own
+  without disturbing ordinary feeding.
+- **Bandages are applied through the pet's own action, not the Feed action** — a bandage is refused
+  as food.
+
 ## See also
 
 - [Loyalty & bonds](./loyalty-and-bonds.md) — how feeding raises the bond

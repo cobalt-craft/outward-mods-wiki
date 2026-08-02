@@ -65,9 +65,6 @@ around either — chests and the odd-container set only. A container rolls once 
 contents, so re-opening the same chest never yields more; when an area resets (about seven in-game
 days) its chests re-roll, ours along with the vanilla loot.
 
-> ⚠ **Built, not yet live-verified.** The blanket recipe-scroll drop has not been exercised in-game —
-> see `docs/pet-temperature-testplan.md` (V191–V195).
-
 ## Relief: weather foods and water
 
 Fed **weather-resist consumables** — warming and cooling potions, teas, and water — also grant the
@@ -97,6 +94,16 @@ Which consumables count, and how much relief each gives, is data-driven — see
 While a pet is out of its comfort band, cold/freezing or hot/overheating icons appear on your HUD (see
 [Loyalty & bonds](./loyalty-and-bonds.md)). The Companion tab shows what the pet is wrapped in and
 sipping, and warns if you've wrapped it against the wrong extreme.
+
+## Limitations
+
+- **The recipe-scroll drop is rare by design** (5% per container, per scroll). If you'd rather not
+  rely on it, both blankets stay craftable from their ingredients once you know the recipe.
+- **Relief is one-sided and can be outrun.** In the harshest zones a single blanket may not fully
+  cover a very cold- or heat-sensitive species; stack a weather food or drink on top, or leave.
+- **A pet drained to zero by the climate is gone for good under the default `PetDeathMode`.** If you
+  would rather that never happen, set it to `KnockedOut` or `Disabled` before travelling somewhere
+  extreme.
 
 ## See also
 

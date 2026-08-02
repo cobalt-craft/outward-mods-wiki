@@ -24,7 +24,10 @@ Copy the template and you inherit, already wired:
 - A **[ForgeKit](../kits/forgekit.md) command channel** — write a verb into
   `BepInEx/config/HelloOutward_cmd.txt` and it runs on the next poll. `help` lists everything;
   `selftest` runs the template's `[SELFTEST]` report. The poll is on unscaled time, so verbs fire even
-  while the game is paused.
+  while the game is paused. The channel adopts the file's state at boot, so a verb left over from the
+  previous session does not replay at startup.
+- **ForgeKit's shared dev-verb pack**, already registered on that channel — see
+  [Commands](#commands).
 - **Config binding** — one example `Config.Bind(...)` entry, so the mod generates its own
   `BepInEx/config/<guid>.cfg`.
 - The **keybind Claim pattern** — the copy-ready (commented) pair for binding a key *and* registering
@@ -45,6 +48,31 @@ GreetOnEachAreaLoad = true
 
 The `[Keys] GreetKey` pair (see [Adding a keybind](#adding-a-keybind)) ships commented out and bound
 to `KeyCode.None`, so it produces no config section until you wire a real key.
+
+## Commands
+
+Write a verb into `BepInEx/config/HelloOutward_cmd.txt` and it runs on the next poll (results go to
+the log). Write `help` to list them all.
+
+| Command | What it does |
+|---|---|
+| `selftest` | Run the template's checks and log `[SELFTEST] PASS/FAIL … DONE`. Runs at the main menu too. |
+
+Most of what answers on this channel comes from **ForgeKit's shared dev-verb pack**, which the
+template registers for you — items and inventory (`give`, `drop`, `useitem`, `equip`, `unequip`,
+`givewater`, `givemoney`, `containerdump`, `containerroll`), world and staging (`teleport`, `goto`,
+`moveto`, `pos`, `face`, `settime`, `reloadcfg`), combat (`sethp`, `swing`, `castspell`, `lockon`,
+`lockoff`, `combatclear`, `killnearest`, `grantstatus`, `removestatus`), skills (`learnskill`,
+`unlearnskill`, `resetcooldowns`), the engine dumps (`statusdump`, `scenedump`, `skydump`,
+`groundprobe`, `combatmgrdump`, `keybinds`, `ragdolldump`, `psdump`) and `unstick` (alias `unwedge`).
+Registries are per-mod, so this copy answers only on `HelloOutward_cmd.txt` and never collides with
+another mod's. See [ForgeKit](../kits/forgekit.md) for the full pack and for turning domains off.
+
+`help` and the scripting verbs (`script`, `scriptstatus`, `scriptcancel`) come from the command
+channel itself, so every mod in this family has them whether or not it takes the pack.
+
+`reloadcfg` works because the template passes a `ConfigSource` — BepInEx 5 has no config file
+watcher, so without it a hand-edited `.cfg` does nothing until a relaunch.
 
 ## Scaffold a new mod
 
@@ -119,7 +147,9 @@ namespace HelloOutward
                 "Log a greeting every time the game loads prefab resources.");
 
             RegisterVerbs();
-            _channel = new CommandChannel("HelloOutward_cmd.txt", Log, _commands);
+            // primeStamp: adopt the command file's current state, so a verb left over from
+            // the previous session does not replay at startup.
+            _channel = new CommandChannel("HelloOutward_cmd.txt", Log, _commands, primeStamp: true);
 
             new Harmony(GUID).PatchAll();   // applies every [HarmonyPatch] in this assembly
         }
@@ -135,6 +165,11 @@ namespace HelloOutward
 
             _verbs.Register("selftest", "Run the template self-test.",
                 _ => SelfTest(), tag: "[HelloOutward]", needsPlayer: false);
+
+            // ForgeKit's shared dev-verb pack, on THIS mod's own channel. ConfigSource is what
+            // wires up `reloadcfg` (it's a getter because BaseUnityPlugin.Config is protected).
+            CommonVerbs.RegisterAll(_verbs, Log,
+                new CommonVerbsOptions { ConfigSource = () => Config });
         }
     }
 }

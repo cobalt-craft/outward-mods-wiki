@@ -57,7 +57,7 @@ perfectly — it's the same creature the game itself would have spawned, not an 
 
 The creature roster comes from **[DonorKit](./donorkit.md)**, which owns the table mapping
 each species to the scenes it can be found in — the harvest engine that fetches them, the expedition
-tier for region-only species, and (since 2026-07-26) the session **template store** SpawnKit's
+tier for region-only species, and the session **template store** SpawnKit's
 prewarm cache rides on: SpawnKit's templates live in the store's *spawn kind*, while all the spawn
 policy (normalization, the rig reject, the LRU cap) stays SpawnKit's. A third mod can even add a
 spawnable species without touching SpawnKit, via `DonorKit.TemplateStore.RegisterSpecies` /
@@ -98,9 +98,12 @@ an expedition: SpawnKit takes the whole party through a loading screen to the do
 | `[Coop] EnableCoopSpawns` | `true` | Replicate host spawns to guests running SpawnKit. Off = spawns refuse in a co-op room. |
 | `[Coop] DespawnOnMirrorFailure` | `true` | If a guest can't mirror a spawn, despawn it everywhere (safer than leaving a ghost). |
 | `[Coop] MirrorQueueTimeoutSeconds` | `20` | How long a guest holds a received spawn (waiting for its scene) before giving up. |
+| `[Coop] VerboseNet` | `true` | Extra guest-side `[MIRROR]` mirror-queue logging (duplicate-drop / unknown-uid lines). The per-message co-op send/receive lines are [NetKit](./netkit.md)'s — those are governed by `[Net] VerboseNet` in NetKit's cfg. |
+| `[Coop] HeartbeatSeconds` | `30` | **Deprecated and ignored.** The co-op heartbeat now rides NetKit's `[Net] HeartbeatSeconds`; this key is kept only so an existing value doesn't error. A non-default value logs a warning pointing at NetKit's cfg. |
 
-Config values are re-read live with the `reloadcfg` command (a raw file edit alone does nothing until
-then, or a relaunch); a few — the corpse policy and cached bodies — apply to *new* spawns only.
+BepInEx has no config file-watcher, and SpawnKit registers no config-reload verb, so an edit to this
+file takes effect on the **next launch**. A few settings — the corpse policy and cached-body cap —
+apply to *new* spawns only.
 
 ### Example configuration
 
@@ -147,6 +150,7 @@ Unknown verb or `help` lists them all.
 | `expeditionreset` | Force a stuck expedition guard open (the fix for "the spawn menu stopped opening"). Doesn't teleport anyone. |
 | `spawnmenu` | Toggle the in-game menu regardless of `MenuKey`. |
 | `lootprobe` | Per-spawn corpse-loot diagnosis. |
+| `bonedump` | Skeleton/rig diagnosis for a spawned body (the "stretched to a vertical line" failure mode). |
 | `skcoopdump` | Co-op state on this machine: handshakes, mirrored spawns, message counters. (More co-op dev verbs under `help`: `skinject` / `skfail` / `skdrop` / `skresync` / `skgone` / `skstream` / `skfollow`.) |
 | `selftest` | Sanity-check the install; look for `[SELFTEST] … DONE` in the log. |
 

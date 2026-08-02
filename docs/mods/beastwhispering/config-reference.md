@@ -21,7 +21,7 @@ same name in `BepInEx/config/` (see [Data manifests](./data-manifests.md)).
 ### Example configuration
 
 `BepInEx/config/cobalt.beastwhispering.cfg` — created on first launch. Excerpt (representative
-sections; the file has 31 in all):
+sections; the file has 30 in all, 185 keys):
 
 ```ini
 [Keys]
@@ -165,6 +165,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `HexMealWindow` | `3` | How many recent mapped meals drive the hex mix. |
 | `HexBuildupPercent` | `20` | Hex build-up percent contributed per mapped meal. |
 | `HonestHits` | `true` | Hunt as One strikes are failable — a block, dodge or whiff means that half deals nothing. |
+| `ProcWeaponHitEffects` | `true` | The player's synced strike also fires the equipped weapon's own on-hit effects (enchantments, elemental procs), not just the flat bonus damage. |
 | `EnableRangedSpecial` | `true` | A `Kind=Ranged` species (e.g. Mantis Shrimp) fires its own captured projectile on Hunt as One. |
 | `BoltMaxFlightSeconds` | `6` | Backstop ceiling on waiting for a fired bolt's impact before ruling a miss. |
 | `SyncSkillCooldownToPet` | `true` | Make the skill advertise the active species' real signature cooldown, so the hotbar countdown is truthful. |
@@ -245,11 +246,19 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `IndicateStatusIcon` | `true` | Show a "Scent Trail" buff icon while the pet holds a scent (also needs `ShowPetStatusIcons`). |
 | `IndicateToast` | `true` | On a fresh character-kind alert, an on-screen toast names the scent and its compass direction. |
 
+## [Sigils] — mage sigils and the pet
+
+| Key | Default | Effect |
+|---|---|---|
+| `EnableSigilSynergies` | `true` | A species with a sigils entry changes its Hunt as One hit while the pet stands in a mage sigil. |
+| `EnablePetSigils` | `true` | A species with a sigil of its own may lay that circle at its own feet. |
+| `PetSigilScale` | `0.75` | Size of the pet-laid circle relative to a player-cast sigil. |
+| `PetSigilCooldownSeconds` | `60` | Minimum seconds between pet-laid sigils. |
+
 ## Single-switch systems
 
 | Section · Key | Default | Effect |
 |---|---|---|
-| `[Sigils] EnableSigilSynergies` | `true` | A species with a sigils entry changes its Hunt as One hit while the pet stands in a mage sigil. |
 | `[Gear] EnableGearEffects` | `true` | A worn item with a gear entry alters the active pet (e.g. a Pearlbird Mask boosts loyalty gain). |
 | `[BuffFoods] EnableBuffFoods` | `true` | Feeding a buff food grants a temporary damage buff. It fills the belly too only if the species' diet also accepts that item (then one item does both); otherwise it is buff-only. |
 | `[Scavenge] EnableScavengeBonus` | `true` | A species's listed loot containers roll extra times on first open, by loyalty tier. |
@@ -325,12 +334,13 @@ damage while the visible body puppets it. Most of these are for debugging.
 |---|---|---|
 | `EnableTamingFoods` | `true` | The taming loop: recipe-scroll drops, cooking chow, and taming a wild one by using it nearby. |
 | `TameRadius` | `15` | How close a wild creature must be for using its taming food to tame it. |
+| `TameRecheckGraceMult` | `1.5` | Slack on `TameRadius` for the re-check after the eat animation, so a creature that drifted a step away during the animation still counts. |
 | `RecipeDropChance` | `0.33` | Global chance (0–1) a tameable creature drops its recipe scroll on death, ×its per-species chance. Roughly one scroll per three tameable kills. |
 
 > **A changed default does not reach an existing install.** BepInEx writes a `.cfg` once and never
 > migrates a new default into it, so a game that has already generated
-> `BepInEx/config/cobalt.beastwhispering.cfg` keeps whatever number that file holds (`1` for anything
-> installed before this change). Edit the key by hand, or delete the file and let it regenerate.
+> `BepInEx/config/cobalt.beastwhispering.cfg` keeps whatever number that file holds. Edit the key by
+> hand, or delete the file and let it regenerate.
 
 ## [Maren] — the trainer NPC
 
@@ -340,12 +350,6 @@ damage while the visible body puppets it. Most of these are for debugging.
 | `MarenScene` | `CierzoNewTerrain` | Scene build name Maren stands in. |
 | `MarenPosX` / `MarenPosY` / `MarenPosZ` | *(Cierzo spot)* | Maren's spawn position. Re-stamp with the `marenhere` verb. |
 | `MarenRotY` | *(Cierzo facing)* | Maren's facing (yaw degrees). |
-
-## [MP] — multiplayer
-
-| Key | Default | Effect |
-|---|---|---|
-| `AllowConsumeTameInRoom` | — | **Removed 2026-07-31.** Every tame (solo, host or guest) now uses the safe non-consume path with a networked removal of the wild, so the old tradeoff this toggled (refuse the host's tame vs leave guests a frozen copy) no longer exists. A leftover line in an existing config file is ignored harmlessly. |
 
 ## Diagnostics & maintenance
 
@@ -361,8 +365,9 @@ damage while the visible body puppets it. Most of these are for debugging.
 | `[Harvest] FlushTerrainAfterPurge` | `true` | Re-arm terrain render data after a purge. |
 
 > **`[Expedition]` is a legacy section.** Its keys (`CaptureOnSceneEntry`, `AutoWarmAtBoot`,
-> `AlwaysWarmSpecies`) moved to CompanionKit's own config (`cobalt.companionkit.cfg`); the copies here
-> are read once to migrate a customised value and then ignored. Edit CompanionKit's config instead.
+> `AlwaysWarmSpecies`) live in **[DonorKit](../../kits/donorkit.md)**'s own config,
+> `BepInEx/config/cobalt.donorkit.cfg`; the copies here are read once to migrate a customised value
+> and then ignored. Edit DonorKit's config instead.
 
 ## See also
 

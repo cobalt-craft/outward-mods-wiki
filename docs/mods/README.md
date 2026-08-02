@@ -6,6 +6,7 @@ automatically.
 | Mod | What it does | For |
 |---|---|---|
 | [Beastwhispering](beastwhispering/README.md) | Tame wild Outward animals as persistent pets — feed, bond, and fight alongside them. | Players |
+| [DangerousRoads](dangerous-roads.md) | Repopulate the overworld with wandering ambush encounters. | Players |
 | [Hireling](hireling.md) | Recruit a townsperson as a persistent human follower. | Players |
 | [Cloudward](cloudward.md) | Sync your saves across devices via a mounted/shared folder. | Players |
 | [HelloOutward](hellooutward.md) | A minimal starter mod to copy when making your own. | Modders |

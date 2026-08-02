@@ -85,7 +85,7 @@ is in every `[HARVEST]` completion line.
 
 Some creatures live only in open-world regions and towns. Those scenes are too large to load
 additively — it crashes — so they are marked oversized and the additive path refuses them. Reaching
-them is the expedition tier (moved here from CompanionKit, 2026-07-26): a real round trip through
+them is the expedition tier: a real round trip through
 the vanilla loading screen. `ExpeditionHarvest` drives two ordinary area switches (out and back),
 runs a capture payload in the donor region while the screen is still black and gameplay paused,
 auto-passes both "press any key" gates, restores every player to their marked position, and records
@@ -141,7 +141,7 @@ DonorKit.TemplateStore.RegisterTemplate("My Custom Wolf", dormantClone);
 | `[Expedition]` | `AutoWarmAtBoot` | `needed` | Once-per-launch template warm at the first gameplay player-ready: `needed` (only when the active companion's species has no other source) / `all` (re-dump every manifest scene with uncached species) / `off`. |
 | `[Expedition]` | `AlwaysWarmSpecies` | *(empty)* | Comma-separated species warmed at the same boot pass regardless of mode. Empty = the defaults consumer mods register in code (Beastwhispering registers Pearlbird); a non-empty list replaces them; `none` disables warming entirely. |
 | `[Expedition]` | `AutoWarmRetrySeconds` | `60` | How long the boot warm polls for an in-flight load to settle before giving up. |
-| `[Expedition]` | `ReturnRetrySeconds` | `20` | Bug-25 safety net: re-request the return leg if it never turned into a load. |
+| `[Expedition]` | `ReturnRetrySeconds` | `20` | Safety net: re-request the return leg if the request never turned into a load. |
 | `[Expedition]` | `AllowCoop` | `false` | Allow an expedition to start with guests connected. Off by default — a mid-trip guest gate wedge can strand the whole party in the donor region. |
 | `[Expedition]` | `GuestAutoContinue` | `true` | Guest-side: auto-pass this machine's continue gates while the host's expedition is in flight (keyed on the `CK_EXPED` room property; inert in ordinary play). |
 
@@ -168,12 +168,11 @@ AutoWarmAtBoot = needed
 AlwaysWarmSpecies = Pearlbird
 ```
 
-> **Moved in 0.1.0.** These keys used to live in `cobalt.companionkit.cfg` (`[Rig]` with the first
-> extraction, `[Expedition]` with the expedition-tier move the same day). Hand-tuned entries left in
-> the old file are now inert and the new ones start at their defaults — the defaults are identical,
-> so a stock install is unaffected; if you had customized `[Expedition]` values, re-apply them here.
-> (An old *Beastwhispering* `[Expedition]` section still migrates automatically — that lane predates
-> the kit split and lands its values in this file.)
+> **Moved in 0.1.0.** `[Rig]` and `[Expedition]` used to live in `cobalt.companionkit.cfg`. Entries
+> left behind in that file are now inert and the ones here start at their defaults — the defaults are
+> identical, so a stock install is unaffected; if you had customized `[Expedition]` values, re-apply
+> them here. (An older *Beastwhispering* `[Expedition]` section still migrates automatically into
+> this file.)
 
 The species→scene table itself is data, not config, and ships embedded in the kit. Override or extend
 it without rebuilding anything by dropping a `DonorScenes.txt` into `BepInEx/config/`:
@@ -191,7 +190,7 @@ is paused). `help` or an unknown verb lists them all.
 
 | Verb | Does |
 |---|---|
-| `photondump` | Photon view-registry health — the Bug-1 diagnostic |
+| `photondump` | Photon view-registry health — the donor-view-collision diagnostic |
 | `audiodump` | Audit the global audio manager for destroyed registrants |
 | `audioprune` | Drop destroyed sound players from the static registry, then audit |
 | `terraindump` | Snapshot terrain health now (`[TERRAIN]` mesh tiles / broken meshes / missing LOD2) |
@@ -199,8 +198,9 @@ is paused). `help` or an unknown verb lists them all.
 | `scenedump` | List every build scene, for donor-scene name resolution |
 | `selftest` | Donor table non-empty, no harvest window leaked open |
 
-Consumers register the first five on their own channel too, so you can reach them from
-`ck_cmd.txt` / `bw_cmd.txt` / `SpawnKit_cmd.txt` without switching files.
+The first five ship as a pack a consumer can register on its own channel:
+[CompanionKit](./companionkit.md) does (`ck_cmd.txt`), as does Beastwhispering (`bw_cmd.txt`), so
+you can reach them there without switching files. SpawnKit does not — use `DonorKit_cmd.txt`.
 
 The expedition/template verbs (`expedition`, `templateclear`, `expeditionreset`, `templateprobe`)
 deliberately stayed on the CONSUMER channels (`ck_cmd.txt`, with `bw_cmd.txt` twins) even though the

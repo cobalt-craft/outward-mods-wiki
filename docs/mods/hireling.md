@@ -7,7 +7,7 @@ for players who want a humanoid companion, and it is the human-follower counterp
 
 **At a glance**
 - Type: gameplay mod
-- Requires: BepInEx 5 (Mono branch), [ForgeKit](../kits/forgekit.md), [CompanionKit](../kits/companionkit.md) (which itself pulls in AggroKit and NetKit)
+- Requires: BepInEx 5 (Mono branch), [ForgeKit](../kits/forgekit.md), [CompanionKit](../kits/companionkit.md) (which itself pulls in AggroKit, DonorKit and NetKit)
 - Config: `BepInEx/config/cobalt.hireling.cfg`
 - Commands: `BepInEx/config/hl_cmd.txt`
 - Data: an embedded follower-stats table, overridable at `BepInEx/config/FolkStats.txt`
@@ -38,18 +38,19 @@ An NPC must be within **15 m** (configurable) to recruit. You can target a speci
 - `disengage` — stand down: the follower drops the fight and returns to you until you engage again.
 - `dismiss` — let the follower go. This tears it down completely.
 
-**Your recruit survives a relaunch (v1 persistence, 2026-07-26 — built, not yet live-verified).**
+**Your recruit survives a relaunch.**
 The follower is remembered per character in `BepInEx/config/hl_folk_<your character uid>.txt`
 (written at recruit, on each zone arrival, and when you quit to the menu; `dismiss` deletes it).
 On your next launch, the follower re-forms when you are in a scene that holds a live NPC with the
 same name — typically the town you recruited them in — and steps back in at the spot they were
 last saved. Their stats re-read from the live NPC, exactly like a fresh recruit.
 
-**What it can't do yet**
+### Known issues and limitations
 
 - **Re-forming needs a live same-named NPC in the current scene.** Reload out in the wilds and the
-  follower waits (quietly) until you next enter such a scene. Their gear/stats are re-captured, not
-  frozen — a v1 trade-off.
+  follower waits (quietly) until you next enter such a scene. Their gear and stats are re-captured
+  from that NPC rather than frozen at recruit time, so an NPC that has changed since looks different
+  when your follower comes back.
 - **One follower at a time.** Recruit again after you have dismissed the current one.
 - **In co-op, only the host recruits and dismisses.** A guest who presses the key is told the host
   handles followers; a guest's own reload never re-forms one.
@@ -137,6 +138,10 @@ Write `help` to list them all.
 | `folkstats` | Stats pipeline: captured vs. table row vs. effective, plus the anchor's live readback. |
 | `reloadfolk` | Re-read the `FolkStats.txt` override and re-apply now. |
 | `selftest` | Run the mod's internal checks and log the results. |
+
+Hireling does not add ForgeKit's shared dev-verb pack to this channel — only the commands above,
+plus `help` and the scripting verbs (`script`, `scriptstatus`, `scriptcancel`) that every command
+channel provides.
 
 ## For modders
 
