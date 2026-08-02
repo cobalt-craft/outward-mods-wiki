@@ -97,6 +97,18 @@ guest's own companion when it re-forms with no creature nearby to clone.
 | `PinToAnchor` | `false` | Pin each effigy body onto its pet's networked anchor replica instead of navigating it independently. |
 | `AnchorAnimSpy` | `false` | Diagnostic: periodically dump every foreign anchor replica's animator state. |
 
+### `[Diag]` — the orphan-body reaper
+
+A companion body that outlives its bond (a confirmed leak class) used to keep following the player
+as an unreachable duplicate. The kit now tracks every live body and destroys any that nothing owns,
+after a generous grace window.
+
+| Key | Default | Effect |
+|---|---|---|
+| `OrphanBodyPolicy` | `Reap` | `Reap` = warn, then destroy an unowned body; `LogOnly` = warn only (the live escape hatch if you suspect a false positive); `Off` = no sweep. |
+| `OrphanBodyGraceSeconds` | `90` | Never judge a body younger than this (in-flight builds legitimately go unowned for a few seconds). |
+| `OrphanBodyCondemnSeconds` | `20` | How long an orphan is warned about before it is destroyed. |
+
 ### Example configuration
 
 `BepInEx/config/cobalt.companionkit.cfg` — created on first launch. Excerpt:
@@ -129,6 +141,8 @@ verb or `help` lists them all.
 | `terraindump` / `terrainfix` | Snapshot / repair terrain-tile render holes (a failed harvest can blank a LOD tile; a zone reload is the clean fix). |
 | `proxydump` / `proxykill <ownerUid>` | Co-op guest-pet proxy census / tear down one proxy row. |
 | `effigydump` | Co-op effigy census on this machine. |
+| `effigyrebind <ownerUid\|all>` | Reset an effigy row's local binding so the next reconcile re-resolves from scratch. |
+| `bodycensus` | Every live companion body on this machine — id, species, origin, age, ownership, position and the pathfinding agent's internal position. |
 | `netbusdump` | Co-op network census (delegates to [NetKit](./netkit.md)'s `netdump`). |
 | `ckreload` | Re-read `cobalt.companionkit.cfg` from disk. |
 
