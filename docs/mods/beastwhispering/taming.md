@@ -19,6 +19,12 @@ time**.
 The tamed creature keeps its own look and its own combat stats — see
 [Combat & companion](./combat-and-companion.md).
 
+> **⚠ Known issue — step 3 works in single-player only.** Using the chow currently only tames in a
+> **single-player** session; in a co-op session the tame does not take. Everything *after* taming is
+> fully multiplayer-ready — an existing pet follows, fights, feeds, bonds and persists in co-op
+> exactly as it does solo — so the workaround is to tame solo and then join your session. This is a
+> bug and we are working diligently to resolve it.
+
 ### No-waste rules
 
 The chow is only consumed on a successful tame. Using it when you **already own a pet**, or with **no

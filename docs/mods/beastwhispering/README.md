@@ -22,6 +22,12 @@ what you fight. A native **Companion** tab in the character menu shows its full 
 
 Only certain species can be tamed — see [Creatures](./creatures.md).
 
+> **⚠ Known issue — taming is single-player only.** Using chow on a wild creature currently only
+> succeeds in a **single-player** session. An already-tamed pet is **fully playable in multiplayer**:
+> it follows, fights, feeds, bonds and persists in co-op just as it does solo. Tame your companion
+> solo, then take it into co-op. This is a bug, not a design decision, and we are working diligently
+> to resolve it.
+
 ### Getting started
 
 The core loop:
