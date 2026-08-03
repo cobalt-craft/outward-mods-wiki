@@ -320,13 +320,22 @@ damage while the visible body puppets it. Most of these are for debugging.
 | `UnifyTargets` | `true` | Keep the anchor and pet locked on the same enemy. |
 | `AnchorPlayerCollision` | `PassPlayer` | How the anchor collides with players: `PassPlayer` (can't shove you), `Block` (pre-fix), `Phantom` (blocks nothing). |
 
-## [PetPanel] — Companion-tab controller nav
+## [PetPanel] — Companion-tab controller nav and naming
 
 | Key | Default | Effect |
 |---|---|---|
 | `EnableControllerNav` | `true` | Right stick scrolls the active half of the Companion tab; triggers switch halves. |
 | `StickScrollSpeed` | `1.2` | Scroll speed at full stick deflection. |
 | `StickDeadzone` | `0.2` | Right-stick deadzone before scrolling. |
+| `EnableRename` | `true` | Let the Companion tab's header be clicked (or opened with the pad's top-right face button) to name your pet. Off = the header is a plain label and your pet always shows its species. |
+
+```ini
+[PetPanel]
+EnableControllerNav = true
+StickScrollSpeed = 1.2
+StickDeadzone = 0.2
+EnableRename = true
+```
 
 ## [Taming] — the player taming loop
 

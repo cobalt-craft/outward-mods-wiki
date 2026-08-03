@@ -285,6 +285,7 @@ SpawnKit simply ignores it, and a spawn from an older peer reads back as `""`.
 | Spawns are **ephemeral by design** | Scene unload = `OnDespawned`, and saves skip `SK_` UIDs both directions. Don't build persistence on top. |
 | A **cold species blocks ~1–6s** before `onReady` | `Prewarm` on your init path if the spawn must feel instant. |
 | `MaxActiveSpawns` is **global across all consumers** (pending spawns count too) | Tag your spawns (`OwnerTag`) and never call `DespawnAll(null)` from a mod — you'd sweep other mods' spawns. |
+| A consumer's **own cap can bind long before SpawnKit's**, and users will blame SpawnKit | If you enforce a private cap, say so in that key's description and log the block naming BOTH keys and BOTH files — otherwise "it stops at 6 whatever I set `MaxActiveSpawns` to" is the bug report you get (it is the one we got: DangerousRoads' `[Wave] MaxOwnActive`, 2026-08-02). |
 | Callbacks run on the **main thread inside the watch tick** | Keep them cheap. A throwing callback is isolated (swallowed + logged) — it won't break SpawnKit, but you won't get a second chance either. |
 | **Co-op clients always get `Failed/NotMaster`** — guests never initiate | Design your feature so only the host drives spawning. Host-side in-room spawns work when every peer handshakes; otherwise the refusal names the unmodded peer. |
 | An **unmodded guest in the room** blocks in-room spawns (`PeersNotReady`) | That's the feature: a spawn would be an invisible ghost to them. `AllowSpawnInRoom=true` overrides, knowingly. |

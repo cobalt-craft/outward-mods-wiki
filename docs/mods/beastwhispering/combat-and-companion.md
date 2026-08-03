@@ -53,6 +53,24 @@ rest. It shows the pet's full sheet in one place:
 With no pet, the tab shows a styled empty state. Cycle to it with the menu's tab controls like any
 other tab.
 
+### Naming your companion
+
+The header at the top of the tab — where your pet's species is shown — **is** the name field.
+Click it (or press the pad's top-right face button, **Y** on an Xbox layout) and type a name;
+**Enter**, or **A** on a pad, confirms it. Escape, **B**, or clicking away cancels without
+changing anything.
+
+Once named, your companion is called by that name everywhere: the tab header, the caption above
+its health bar, and every message about it — feeding, gifts, bandaging, crossing into a new
+region. Confirming an **empty** name removes it and the pet goes back to showing its species.
+Names are capped at 20 characters.
+
+In co-op the name travels with your pet, so other players' game logs identify it the way you do.
+
+Turn the whole thing off with `[PetPanel] EnableRename = false` in
+`BepInEx/config/cobalt.beastwhispering.cfg` — see the
+[config reference](./config-reference.md#petpanel--companion-tab-controller-nav-and-naming).
+
 ## Known issues & limitations
 
 - **The pet is not a second character.** It has no gear slots, no skills of its own to assign, and no

@@ -40,6 +40,46 @@ Because it is only a file, the same loop can be automated: anything that can wri
 script, a watcher, a helper on another machine — can drive a mod's verbs without the player typing
 anything.
 
+### Turning the logging up (or down)
+
+Every mod built on ForgeKit gets one setting that controls **how much it writes to the log**, in its
+own config file at `BepInEx/config/<guid>.cfg`:
+
+```ini
+[Diag]
+## How much this mod writes to the log.
+# Setting type: LogTier
+# Default value: Verbose
+# Acceptable values: Quiet, Normal, Verbose, Trace
+LogLevel = Verbose
+```
+
+| Value | What you get |
+|---|---|
+| `Quiet` | Warnings and errors only. |
+| `Normal` | Adds the mod's start-up lines, on-screen notices and self-test results. |
+| `Verbose` | **Default.** Adds the normal per-feature diagnostics. |
+| `Trace` | Adds per-tick detail. **This is what a bug report should be captured at.** |
+
+**The default is deliberately chatty.** These mods are still being actively debugged, and a bug
+report that arrives with the diagnostics already in it is worth more than a small log file. If your
+logs are bigger than you'd like, set `LogLevel = Normal` — nothing about the mod changes, it just
+says less.
+
+It is per mod, so you can turn one mod all the way up without drowning in every other mod's output.
+The setting is re-read while the game runs — save the file and it takes effect, no restart.
+
+**One extra step for `Trace` only:** BepInEx's own log filter drops that level before it ever reaches
+the file. Open `BepInEx/config/BepInEx.cfg` and make sure the `[Logging.Disk]` section lists `Debug`:
+
+```ini
+[Logging.Disk]
+LogLevels = Fatal, Error, Warning, Message, Info, Debug
+```
+
+(`All` works too.) `Verbose` needs no such edit — stock BepInEx already passes `Info`. If you do
+forget, the mod says so once in the log rather than leaving you guessing.
+
 ## What's in it
 
 | Piece | What it gives a modder |
@@ -135,7 +175,8 @@ would otherwise silently leave the pack's copy registered.
 ## Settings
 
 ForgeKit has no configuration file of its own — it provides the command channel and config-table
-helpers that consuming mods use. The pieces it ships (`TableLoader`, `CommandChannel`, `Keybinds`)
+helpers that consuming mods use. The one setting it *defines* lives in each consumer's own file:
+`[Diag] LogLevel` in `BepInEx/config/<guid>.cfg` (see "Turning the logging up (or down)" above). The pieces it ships (`TableLoader`, `CommandChannel`, `Keybinds`)
 read the *consuming* mod's files and config, always under that mod's logger. Each consumer gets its
 own command file at `BepInEx/config/<Mod>_cmd.txt`; ForgeKit itself neither writes a `.cfg` nor polls
 a command file.
@@ -214,6 +255,43 @@ Keybinds.Claim(NAME, "tame the targeted animal", MyConfig.TameKey);   // ConfigE
 
 Re-claiming (a live rebind, a config reload) replaces the old claim, so retuning keys never spawns
 phantom conflicts. The `keybinds` verb dumps the whole registry on demand.
+
+### Gate your log volume (`ModLog`)
+
+Swap the type of your plugin's static logger and bind the tier in `Awake`:
+
+```csharp
+internal static ModLog Log;          // was: ManualLogSource
+
+internal void Awake()
+{
+    Log = ModLog.Bind(this, Logger); // binds [Diag] LogLevel on YOUR config file
+}
+```
+
+`ModLog` carries the same method names as `ManualLogSource` and converts implicitly back to the raw
+sink, so **existing call sites compile unchanged** and anything still taking a `ManualLogSource`
+(`CommandRegistry`, `TableLoader`, `Notify`) keeps working. Re-tiering a noisy line is then just
+renaming the method:
+
+| Call | Emits at | Use for |
+|---|---|---|
+| `LogWarning` / `LogError` | always, ungated | faults. Never gate these. |
+| `LogMessage` | `Normal` and up | boot lines, notices, self-test results — what a bug report needs |
+| `LogInfo` | `Verbose` and up | normal per-feature diagnostics |
+| `LogDebug` | `Trace` only | per-tick / per-frame / per-item detail |
+
+For a hot path, check `Log.TraceOn` / `Log.VerboseOn` *before* building the interpolated string —
+BepInEx evaluates the argument at the call site regardless of whether anything will write it.
+
+Two traps worth knowing:
+
+- **BepInEx filters at the SINK, not the source.** `ManualLogSource.Log` always raises the event and
+  the disk/console listeners drop it by bit-test. That is why the gate is here and not in
+  `BepInEx.cfg`: a sink filter still pays every `$"..."`, and it is one knob for every mod at once.
+- **Re-tiering must not move the bytes.** Log tags are a grep contract for testplans and the remote
+  log stream, so a demoted line keeps its exact text — only *whether* it is written changes. Dev
+  machines pin `LogLevel = Trace` via `config/shared/*.cfg.overlay` so those greps keep matching.
 
 ### Extension points and traps
 

@@ -77,6 +77,50 @@ minute.
 - **Encounter frequency varies by region.** Some parts of the map offer far more good places to put
   a creature than others, so the wilds are livelier in some regions than in others.
 
+### Ambushes stop at a number I didn't set
+
+**Two caps apply, in two different files, and the one you probably found is the one that isn't
+stopping you.** Dangerous Roads checks its own `[Wave] MaxOwnActive` *before* it ever asks SpawnKit
+to spawn, so raising SpawnKit's `[Spawner] MaxActiveSpawns` on its own changes nothing.
+
+| Cap | File | Scope |
+|---|---|---|
+| `[Wave] MaxOwnActive` | `BepInEx/config/cobalt.dangerousroads.cfg` | Just this mod's creatures. **Checked first — usually the one stopping you.** |
+| `[Spawner] MaxActiveSpawns` | `BepInEx/config/cobalt.spawnkit.cfg` | Every mod that spawns through SpawnKit, added together. |
+
+Raise `MaxOwnActive`, and keep it at or below `MaxActiveSpawns` — going over just means SpawnKit
+refuses the spawn and toasts you on every attempt:
+
+```ini
+[Wave]
+## Cap on creatures this mod may have alive at once.
+# Setting type: Int32
+# Default value: 8
+MaxOwnActive = 12
+```
+
+```ini
+[Spawner]
+## Refuse spawns that would push the live count (incl. pending) past this cap.
+# Setting type: Int32
+# Default value: 8
+MaxActiveSpawns = 12
+```
+
+Both are live-tunable — edit and run `reloadcfg`, no relaunch. When the cap is what's holding
+waves back, the log says so and names both keys:
+
+```
+[AMBUSH] soft block: own cap reached — 8/8 alive. To raise it, edit [Wave] MaxOwnActive in
+cobalt.dangerousroads.cfg — NOT [Spawner] MaxActiveSpawns (=8) in cobalt.spawnkit.cfg, which
+this check never consults. Retrying in 15s.
+```
+
+`roadsstatus` reports the same thing as `active N / M`. Note that **`MaxOwnActive` defaulted to 6
+before 0.1.2**, below SpawnKit's default of 8 — and BepInEx never rewrites a value that already
+exists in your config file, so an install created before then still has `6` and must be edited by
+hand to pick up the new default.
+
 ## Settings
 
 All settings live in **`BepInEx/config/cobalt.dangerousroads.cfg`**, created on first launch. Every
@@ -93,7 +137,7 @@ no config file-watcher of its own, so an edit alone does nothing until then).
 | | `RetrySeconds` | `15` | Re-check delay after a blocked attempt (loading, in combat, cap reached). |
 | `[Wave]` | `MinCount` | `1` | Fewest creatures in a wave. |
 | | `MaxCount` | `3` | Most creatures in a wave. |
-| | `MaxOwnActive` | `6` | Cap on creatures this mod may have alive at once. |
+| | `MaxOwnActive` | `8` | Cap on creatures this mod may have alive at once. **If ambushes stop below SpawnKit's cap, this is the key to raise** — see [Ambushes stop at a number I didn't set](#ambushes-stop-at-a-number-i-didnt-set). |
 | | `MemberSpacingMeters` | `4` | Minimum spacing between members of one wave. |
 | | `SkipWhileInCombat` | `true` | Hold a wave back while you are already fighting. |
 | | `CombatDeferMaxSeconds` | `120` | Longest continuous stretch that hold may last before the wave fires anyway. `0` = unbounded, which can silence the mod entirely. |

@@ -39,6 +39,7 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 | `petheal` | Heal the pet to full. |
 | `pethealth` | Report the pet's current/max HP. |
 | `bandage` | Apply the first bandage in your inventory to the pet (the right-click "Bandage" action's pipeline, headless). |
+| `petname <name>` | Name the active pet (`petname` with no argument, or `petname --clear`, removes the name so it shows its species again). Same path the Companion tab's rename field uses. |
 | `petstatus` | One-screen dump of the pet's whole state (loyalty, hunger, comfort, stance, combat). |
 | `pettab` | Open the injected Companion menu tab directly. |
 | `petpanel` | Dump the Companion-tab display model to the log (data check with no menu open). |
