@@ -44,6 +44,7 @@ Free-text `notes` may sit alongside; they are documentation only and are never c
 | `buffFoods` | Fed consumables that grant a temporary damage buff. Independent of `diet`: an item in both is fed as a meal **and** buffs, off one item; an item only here buffs without feeding | `BuffFoods.json` |
 | `skillEchoes` | Per-skill overrides for the pet's bonus strike on your weapon skills | `SkillEchoes.json` |
 | `loyaltyGrowth` | How the pet's stats grow with loyalty (per stat group, percent at 100) | `SpeciesGrowth.txt` |
+| `flourish` | The animation the creature plays when a spell you cast reaches it. Either a plain trigger string (`"Flourish"`) or `{ "default": …, "perSpell": { "ward": … } }` for a creature whose animation differs by spell. **Empty by default — a creature with no entry animates nothing**, which is the correct starting state: trigger names are per-creature facts that can only be read off a live body with the `animdump` dev command, never guessed. (The *visual* half of a spell belongs to the spell, not the creature, and lives in `PetSpellFx.json`.) | `SpeciesFlourish.txt` |
 | `donorScenes` / `donorObject` | Which scenes the creature's body can be harvested from | `DonorScenes.txt` ([DonorKit](../../kits/donorkit.md)) |
 | `yaw` | Rig-facing correction if the model walks sideways/backward | `SpeciesYawOffsets.txt` |
 

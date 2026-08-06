@@ -57,8 +57,8 @@ other tab.
 
 The header at the top of the tab — where your pet's species is shown — **is** the name field.
 Click it (or press the pad's top-right face button, **Y** on an Xbox layout) and type a name;
-**Enter**, or **A** on a pad, confirms it. Escape, **B**, or clicking away cancels without
-changing anything.
+**Enter**, or **A** on a pad, confirms it. **Escape** or **B** cancels and changes nothing.
+Clicking away elsewhere keeps what you typed.
 
 Once named, your companion is called by that name everywhere: the tab header, the caption above
 its health bar, and every message about it — feeding, gifts, bandaging, crossing into a new

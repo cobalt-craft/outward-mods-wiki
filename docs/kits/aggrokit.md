@@ -2,9 +2,11 @@
 
 **AggroKit** is a kit (reusable library) for Outward that gives mods precise control over what
 enemies target — force an enemy onto a victim, calm it, taunt a group, or make two hostiles fight
-each other — all built on the game's own AI APIs. It also ships a small, always-on fix for a
-vanilla enemy-squad targeting glitch. It has no player-facing UI; you install it because a mod you
-want depends on it.
+each other — all built on the game's own AI APIs. It has no player-facing UI; you install it because
+a mod you want depends on it.
+
+Out of the box AggroKit changes **nothing** about how your game behaves: every patch it installs is
+inert until a mod or a command activates it.
 
 **At a glance**
 - Type: reusable library (kit)
@@ -16,20 +18,30 @@ want depends on it.
 
 You don't interact with AggroKit directly — it arrives as a dependency of a mod (for example
 [Beastwhispering](../mods/beastwhispering/README.md), whose companion uses it to hold enemy
-attention). The one thing it changes on its own is a small **bug fix**: it stops a member of an
-enemy squad from occasionally getting stuck "fighting itself" (standing in a combat pose, attacking
-nothing) when combat spreads through the group. That fix is on by default and can be turned off in
-the config if you want the raw vanilla behavior back.
+attention). On its own it changes nothing about your game.
+
+**If you are bisecting a suspected mod conflict**, set `EnablePatches = false` in
+`BepInEx/config/cobalt.aggrokit.cfg` and relaunch. AggroKit then patches nothing at all, so you can
+rule it in or out without uninstalling it (which would also disable every mod that depends on it).
+Its boot log lines — `[AggroKit] patches:` and `[AggroKit] gates:` — say exactly which vanilla
+methods it replaced and why, so a log is enough to answer the question.
 
 ## How it works
 
 AggroKit is two things:
 
-**1. A default-on engine fix.** When one enemy in a squad enters combat, the game can spread that
-combat to nearby squad-mates ("contagion"). In a corner case this hands a squad-mate *its own*
-identity as a target, so it stands in a fake fight — attacking nothing — for up to about a minute,
-until a real attacker's blow snaps it out of it. AggroKit blocks that self-target assignment. It is
-unreachable in normal play (a squad-mate is never a valid target), so leaving the fix on is safe.
+**1. An opt-in engine fix (`BlockSquadSelfTarget`, default OFF).** When one enemy in a squad enters
+combat, the game can spread that combat to nearby squad-mates ("contagion"). In a corner case this
+hands a squad-mate *its own* identity as a target, so it stands in a fake fight — attacking nothing —
+for up to about a minute, until a real attacker's blow snaps it out of it. AggroKit can block that
+self-target assignment.
+
+It ships **off**, and the reason is worth stating because it cuts the other way from how it reads:
+the corner case is unreachable in unmodified play, and the block is implemented as a Harmony prefix
+that skips the original method — which in BepInEx also suppresses *any other mod's* prefix on the
+same method. So the shipped default was paying a cross-mod cost for a fix whose trigger cannot be
+demonstrated. Turn it on if you actually see an enemy stuck in a fake fight; it takes effect without
+a restart.
 
 **2. Patch-free aggro tools.** A set of operations built entirely on public engine calls — no
 combat patching — that a mod can invoke to move threat around:
@@ -71,10 +83,12 @@ stealth), redirect detections onto a decoy, or make a character's hits generate 
 | `Dev` | `EnableDumpKey` | `true` | Whether the dump key logs an aggro dump of nearby AI. |
 | `Dev` | `DumpKey` | `F3` | Key that logs an aggro dump of AI near the player (rebindable; needs `EnableDumpKey`). |
 | `Research` | `EnableObservation` | `false` | Re-arm the purely-observational Harmony taps that record the `[AGGRO]` event buffer (target changes, state switches, squad hand-outs, faction flips). Off by default so these hot AI-tick paths stay unpatched. Applied at load — changing it needs a game restart. |
-| `Fixes` | `BlockSquadSelfTarget` | `true` | Kill-switch for the always-on squad self-target fix. On is safe; turn off only to observe the raw engine bug. |
+| `Fixes` | `EnablePatches` | `true` | Master switch for **every** Harmony patch AggroKit installs. Off = AggroKit patches nothing at all, while the library calls and `ak_cmd.txt` verbs keep working — set it off to rule AggroKit out of a mod-conflict bisection without uninstalling it. Applied at load — changing it needs a game restart. |
+| `Fixes` | `BlockSquadSelfTarget` | `false` | Opt-in squad self-target fix (see *How it works*). Off by default: the case is unreachable in unmodified play, and the block suppresses other mods' patches on the same method. Read live — no restart needed. |
 
-The detection-side control patches and the targetability override gate are always installed but stay
-inert until a command or a mod activates them, so they cost nothing when unused.
+With `EnablePatches` on (the default), the detection-side control patches and the targetability
+override gate are installed but stay inert until a command or a mod activates them, so they cost
+nothing when unused.
 
 Edit the file with the game closed: AggroKit does not take ForgeKit's shared verb pack, so it has no
 `reloadcfg` verb and every change here — including a `DumpKey` rebind — is picked up at the next
@@ -94,7 +108,8 @@ DumpKey = F3
 EnableObservation = false
 
 [Fixes]
-BlockSquadSelfTarget = true
+EnablePatches = true
+BlockSquadSelfTarget = false
 ```
 
 A full generated example lives at `tests/fixtures/config/cobalt.aggrokit.cfg`, and the shared-settings
@@ -214,7 +229,7 @@ not an absolute.
 
 ### Targetability overrides
 
-`AggroKit.TargetableOverrides` backs the one Harmony patch AggroKit ships — a postfix on
+`AggroKit.TargetableOverrides` backs the targetability gate — a postfix on
 `TargetingSystem.IsTargetable(Character)`. Force a specific attacker→target pair (or any→target)
 attackable or not, without changing factions:
 
