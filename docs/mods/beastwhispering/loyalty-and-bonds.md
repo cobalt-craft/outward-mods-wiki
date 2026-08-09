@@ -12,9 +12,12 @@ Loyalty falls into five tiers:
 |---|---|---|
 | **Gone** | 0 | The bond is broken — the pet leaves. |
 | **Broken** | 1–14 | Barely holding on. |
-| **Fraying** | 15–39 | Uneasy and weakening. |
-| **Steady** | 40–74 | A solid, reliable companion. |
-| **Devoted** | 75–100 | Fully bonded. |
+| **Fraying** | 15–54 | Uneasy and weakening. |
+| **Steady** | 55–89 | A solid, reliable companion. |
+| **Devoted** | 90–100 | Fully bonded. |
+
+The last two floors are deliberately far out (they were 40 and 75 before 2026-08-07): a freshly tamed
+pet starts at 50, i.e. **Fraying**, and Steady and Devoted are things you fight your way to.
 
 The tier acts as a "level" (Gone = 0 … Devoted = 4) that scales the pet's stats and the bond buffs it
 grants you.
@@ -25,7 +28,9 @@ grants you.
 |---|---|
 | Feed Preferred food | +10 |
 | Feed Bond food | +20 |
-| Defeat a nearby difficult enemy together | +5 |
+| Any enemy dies near you while the pet is out | +20 (lands as **+1**) |
+| A Hunt as One cast grants Synergy | +20 (lands as **+1**) |
+| A For the Kill execute lands the killing blow | +60 (lands as **+3**) |
 | First crossing of a region pair (once the Wild Unknown skill is learned) | +5 |
 | A day without feeding | −15 (species decay; more in bad weather) |
 | The pet is critically hurt | −10 |
@@ -37,8 +42,13 @@ Cold or heat also accelerates the daily decay — see
 ### Gains are slow — losses are not
 
 A bond is meant to be **hard won**. Every *gain* in that table is scaled down to **5%** of its listed
-value before it lands, so a preferred meal is worth **+0.5**, not +10, and a kill credit is worth
-**+0.25**. Every *loss* lands at its full face value. Building a Devoted pet is the work of many
+value before it lands, so a preferred meal is worth **+0.5**, not +10. Every *loss* lands at its full
+face value.
+
+**Fighting together is the fast lane.** The three combat rows above carry face values chosen so that,
+after that 5% scaling, a kill is worth exactly **one** loyalty and a For-the-Kill killing blow
+**three** — which is why they are the only way to climb to Steady and Devoted at any pace. Exactly one
+credit is paid per death: an execute kill *upgrades* the plain kill credit instead of stacking on it. Building a Devoted pet is the work of many
 sessions of feeding, fighting and travelling together; neglecting one still costs you quickly.
 
 Nothing is lost to rounding. The fraction a gain doesn't deliver is **banked on that pet** and the
@@ -49,8 +59,22 @@ The practical consequence: after one meal the loyalty number often **doesn't vis
 the system working, not a failed feed — the `petstatus` dev verb reads out how much is banked toward
 the next point.
 
-If you'd rather bond at the old pace, set `LoyaltyGainPercent = 100` — see
-[Config reference](./config-reference.md).
+If you'd rather bond at the old pace, set `LoyaltyGainPercent = 100`. Note it scales the combat rows
+too, so raising it makes a kill worth twenty loyalty rather than one.
+
+Config lives in `BepInEx/config/cobalt.beastwhispering.cfg`:
+
+```ini
+[Systems]
+## Percent of every POSITIVE loyalty gain that actually lands.
+LoyaltyGainPercent = 5
+## Fighting alongside the pet raises the bond (kills, Synergy, For-the-Kill killing blows).
+EnableCombatLoyalty = true
+## How near you (metres) an enemy must die for the kill to credit the bond. 0 = no distance check.
+KillCreditRadius = 40
+```
+
+See also the [Config reference](./config-reference.md).
 
 ### Abandonment
 

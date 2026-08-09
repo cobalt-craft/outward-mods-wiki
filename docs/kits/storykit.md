@@ -149,6 +149,10 @@ NpcRegistry.Register(new NpcSpec
         {
             Choice.Train("train", "Train with me."),            // opens the vanilla trainer panel
             Choice.Reply("who",   "Who are you?", "Maren. …"),  // NPC answers, then loops back
+            Choice.Menu("lore",   "Tell me about the beasts.",  // a SUBMENU — see below
+                Choice.Reply("lore.hyena", "Hyenas?", "They hunt in threes. …"),
+                Choice.Menu("lore.birds",  "Birds?",             // menus nest, up to 3 deep
+                    Choice.Reply("lore.pearlbird", "Pearlbirds?", "Loud. Loyal. …"))),
         },
     },
 
@@ -209,7 +213,27 @@ Assert.False(TreeLayout.HasErrors(issues));   // errors would refuse the NPC at 
 | `SpecValidation.Validate(NpcSpec)` → `List<SpecIssue>` | Offline spec-shape validation (trainer optional, inconsistent trainer refused); pair with `HasErrors` / `FirstError`. |
 
 Core data types: `NpcSpec`, `Placement`, `TrainerSpec`, `DialogueSpec`, `Choice` (with
-`Choice.Train` / `Choice.Reply` factories), `SkillTreeDef`, `SlotDef`, `SpecIssue`.
+`Choice.Train` / `Choice.Reply` / `Choice.Menu` factories), `SkillTreeDef`, `SlotDef`, `SpecIssue`.
+
+### Nested topic menus (`Choice.Menu`)
+
+A `Choice.Menu(id, text, children…)` row opens a **submenu** instead of speaking a line — the way to
+organise an NPC who has a lot to say (a tutorial NPC, a lore index) without a twenty-row list.
+
+- **StoryKit appends the Back row itself.** You never author one, so a menu cannot dead-end. Set
+  `Choice.BackText` to relabel it (`"← Never mind."` at the top of a tree reads better than "Back").
+- **A leaf returns to the menu it was chosen from**, so a reader browses a topic list instead of
+  being thrown to the top. Only a leaf at the ROOT loops back through the greeting.
+- **Nesting is capped at 3 levels deep**, and an empty submenu or a `Children` cycle is an ERROR
+  from `SpecValidation` — the emitter is recursive, so a cycle would never return. Validate offline.
+- **`Choice.Train` only works at the root.** The trainer node is a singleton in the graph; a Train
+  row inside a submenu is dropped with a warning.
+- Keep a menu at or under about **6 rows** — the dialogue panel numbers rows `1..N` and grows the
+  list on demand, so a longer menu functions but reads badly and loses its number hotkeys' clarity.
+
+The whole tree prints as an indented outline at rig time (`[STORYKIT] dialogue built for '<id>'`),
+which is the fastest way to check a graph without talking to the NPC. A
+`[STORYKIT] … dialogue edge REFUSED for '<choiceId>'` line means that row is dead.
 
 ### Notes and limitations
 
