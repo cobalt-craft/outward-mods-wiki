@@ -80,6 +80,11 @@ mod in this family, so a clash is reported at startup — see the
 | [Dev verbs](./dev-verbs.md) | The `bw_cmd.txt` command channel for testing |
 | [Data manifests](./data-manifests.md) | The per-species data files and how to add creatures |
 
+## Credits
+
+The mod's artwork — the skill and passive icons, the item icons, and the paw-shaped companion status
+badges — was drawn by **Proboina**.
+
 ## See also
 
 - [Mods index](../README.md)

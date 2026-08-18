@@ -2,25 +2,36 @@
 
 **Loyalty** is a 0–100 value that measures how strongly your pet is bonded to you. It rises when you
 care for the pet and falls when you neglect it. Loyalty drives the pet's tier, its bond buffs, and — at
-the extreme low end — whether it stays with you at all. A freshly tamed pet starts at **50**.
+the extreme low end — whether it stays with you at all. A freshly tamed pet starts at **55** — or far higher once you know **The Wild Unknown** (see below).
 
 ## Loyalty tiers
 
-Loyalty falls into five tiers:
+Loyalty falls into eight tiers:
 
 | Tier | Loyalty | Meaning |
 |---|---|---|
 | **Gone** | 0 | The bond is broken — the pet leaves. |
 | **Broken** | 1–14 | Barely holding on. |
-| **Fraying** | 15–54 | Uneasy and weakening. |
-| **Steady** | 55–89 | A solid, reliable companion. |
-| **Devoted** | 90–100 | Fully bonded. |
+| **Fraying** | 15–39 | Uneasy and weakening. |
+| **Guarded** | 40–54 | Wary, but the bond is forming. |
+| **Steady** | 55–74 | A solid, reliable companion. |
+| **Trusting** | 75–89 | The pet trusts you deeply. |
+| **Devoted** | 90–99 | Fully bonded. |
+| **Soulbound** | 100 | The bond at its absolute peak. |
 
-The last two floors are deliberately far out (they were 40 and 75 before 2026-08-07): a freshly tamed
-pet starts at 50, i.e. **Fraying**, and Steady and Devoted are things you fight your way to.
+A freshly tamed pet starts at 55, i.e. **Steady**, and the ladder above it is a long climb by design.
 
-The tier acts as a "level" (Gone = 0 … Devoted = 4) that scales the pet's stats and the bond buffs it
-grants you.
+The bond buffs and other payouts step up at **Broken, Fraying, Guarded and Trusting** (five payout
+levels in all — Guarded/Steady share one, and Trusting/Devoted/Soulbound share the top one), so a
+new tier name doesn't always mean bigger numbers; the Companion tab's "next tier" preview always
+names the tier where the buffs actually grow.
+
+### The Wild Unknown head-start
+
+Learning **The Wild Unknown** breakthrough deepens every bond: a pet you tame afterwards starts
+**two tiers higher** (at that tier's floor — loyalty **90**, Devoted, with the default start), and
+the pet you already have is raised to that same floor **once** when you learn the skill. It's a
+one-time gift, not a safety net — if the bond decays below it afterwards, that loss is real.
 
 ## What changes loyalty
 

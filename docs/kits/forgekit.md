@@ -127,6 +127,7 @@ opt out of individually.
 | Status | `grantstatus`, `removestatus` |
 | Engine diagnostics | `statusdump`, `pos`, `scenedump`, `skydump`, `groundprobe`, `combatmgrdump`, `keybinds`, `ragdolldump`, `psdump` |
 | Containers | `containerdump`, `containerroll` |
+| Cheats | `cheats`, `cheatmenu`, `godmode`, `enemygod`, `needs`, `speedmult`, `timejump`, `debugfile` |
 | Resilience | `unstick` (alias `unwedge`) |
 | Config | `reloadcfg` (only when the consuming mod hands the pack its config file — see below) |
 
@@ -145,6 +146,20 @@ A few highlights:
 - `grantstatus <status-name> [target=player\|pet] [force]` / `removestatus` — apply or clear a status
   the vanilla way. `target=pet` only answers on a channel whose mod supplied a pet accessor; elsewhere
   it says so rather than silently acting on the player.
+- The Cheats domain drives **the game's own hidden debug mode** (the wiki's "Debug Mode": a
+  `DEBUG.txt` file arms it at boot, unlocking F1–F4 cheat windows). ForgeKit adds no cheat logic of
+  its own — each verb calls the same code the vanilla F2 window's widgets call, and persists the
+  same way, so verb-set and menu-set state always agree. Bare `cheats` prints the **full cheat-state
+  audit** (gate, `DEBUG.txt`, every per-character flag, persisted values) — run it before diagnosing
+  any "vanilla broke" report. `cheats on|off` flips the gate live (no file, no relaunch);
+  `debugfile on|off` makes it persist across relaunches; `cheatmenu <items|cheats|skills|quests|hide>`
+  opens the actual vanilla windows without their F-keys. `godmode`/`enemygod`/`needs off`/
+  `speedmult`/`timejump <hours>` cover the F2 window's main toggles headlessly. Co-op notes:
+  `godmode` replicates room-wide (the vanilla path is a Photon RPC to all), `enemygod` is local,
+  `timejump` is host-only. ⚠ Once debug mode is armed, the *game's* debug hotkeys are live too, and
+  they are invisible to the keybind registry: game F12 (screenshot) collides with Beastwhispering's
+  F12 diag, game F3 (skills window) with AggroKit's F3 dump — the `cheatmenu` and `screenshot`
+  verbs are the collision-free path.
 - `keybinds` — report every key claimed by every mod in the family, grouped by key, with conflicts
   flagged (see the keybind registry below).
 - `unstick` (alias `unwedge`) — the last-resort verb for a session that has stopped responding: bare
@@ -171,6 +186,18 @@ Each mod chooses which domains it takes; a mod that ships its own richer version
 the pack's copy and keeps its own. `RegisterAll` logs one line naming the domains it enabled and the
 exclusions it honored, and warns about any exclusion that matched no verb — a typo in an exclusion
 would otherwise silently leave the pack's copy registered.
+
+### Verb homing rule
+
+Where a dev verb lives is decided by two rules:
+
+- **ForgeKit owns engine-generic verbs** any mod might need; a kit owns diagnostics/repairs for
+  failure modes *its own mechanism* causes. That is why `terraindump`/`terrainfix` live in DonorKit
+  (donor-harvest terrain damage) while `skydump`/`psdump`/`ragdolldump`/`combatmgrdump` live here.
+- **Vanilla-registry staging (skills/status) stays in ForgeKit** by the A10 2026-08-15 ruling:
+  SkillKit owns custom-skill/status *authoring*, not the vanilla registries, and a SkillKit
+  dependency is SideLoader-poisoned for CI-buildable consumers — see the `SkillVerbs.cs` /
+  `StatusVerbs.cs` headers.
 
 ## Settings
 
