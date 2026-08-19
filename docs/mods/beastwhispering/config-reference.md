@@ -20,8 +20,10 @@ same name in `BepInEx/config/` (see [Data manifests](./data-manifests.md)).
 
 ### Example configuration
 
-`BepInEx/config/cobalt.beastwhispering.cfg` — created on first launch. Excerpt (representative
-sections; the file has 30 in all, 185 keys):
+`BepInEx/config/cobalt.beastwhispering.cfg` — created on first launch. Excerpt below is a handful of
+representative sections, not the whole file; the generated cfg is the only authority on its own size
+(`cfgdump`, or `./scripts/forge cfg bw`, lists every section and key live). *A hardcoded section/key
+count used to sit here and had drifted by roughly a third — don't reintroduce one.*
 
 ```ini
 [Keys]
@@ -48,6 +50,12 @@ TameRadius = 15
 [Bandage]
 EnableBandageHealing = true
 BandageItemIds = 4400010
+
+[Cure]
+EnableStatusCures = true
+
+[DotAuras]
+Enable = true
 ```
 
 A full generated example lives at `tests/fixtures/config/cobalt.beastwhispering.cfg`, and the shared
@@ -263,6 +271,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `[BuffFoods] EnableBuffFoods` | `true` | Feeding a buff food grants a temporary damage buff. It fills the belly too only if the species' diet also accepts that item (then one item does both); otherwise it is buff-only. |
 | `[Scavenge] EnableScavengeBonus` | `true` | A species's listed loot containers roll extra times on first open, by loyalty tier. |
 | `[HUD] EnableHealthHud` | `true` | Show a simple pet-health bar (top-left) while a live pet exists. |
+| `[DotAuras] Enable` | `true` | While your pet is burning, poisoned, bleeding or plagued it visibly wears that status's own vanilla effect, replicated to every machine. Without it the effect is invisible — the pet takes the damage on its hidden combat body, whose renderers are switched off, so it just loses health for no apparent reason. Several can show at once (unlike weapon infusions, damage-over-time effects stack). Off = every worn aura clears within one tick, locally and remotely. Forensics: `dotauradump`. |
 
 ## [Skills] — the skill-tree gates
 
@@ -297,6 +306,13 @@ See [Skills](./skills.md).
 | `EnableBandageHealing` | `true` | On a bandage item the right-click "Feed" inventory action becomes "Bandage <pet>": pressing it puts the vanilla heal-over-time status on the pet's anchor (the same one a bandaged player gets), consumes the bandage, and grants the player no buff. Off = a bandage is an ordinary item again (the action falls back to "Feed", which a bandage refuses). |
 | `BandageItemIds` | `4400010` | ItemIDs treated as a "bandage" for the apply-to-pet action, comma-separated (vanilla Bandages = `4400010`). Add a modded bandage's id to make it applicable too. |
 | `BandageStatusNames` | `Bandage` | Status-identifier candidates for the heal status a bandage grants, comma-separated, first that resolves wins (identifiers are asset data; `statusdump`/`bandagedump` list what resolved). |
+
+## [Cure] — curing the pet's status effects
+
+| Key | Default | Effect |
+|---|---|---|
+| `EnableStatusCures` | `true` | Feeding your pet a remedy cures it, exactly as using that remedy cures you: the item's *own* vanilla cleanse effect is applied to the pet's body. Antidote clears every tier of poison at once (it cleanses the Poison type, not one status), Bandages clear bleeding as well as healing, and Panacea / Hexes Cleaner / Mega Health Potion / Myconic Cleanser / Grilled Marshmelon and friends all work for the same reason — nothing is special-cased. A remedy is not food, so no species diet has to list it: any pet takes any cure. An item that would cure nothing is never consumed. A cure that rides a real meal is applied on the same single consume. Off = remedies are ordinary items again. Forensics: `curedump`. |
+| `WaterCuresStatuses` | `Burning,Burn` | **Fallback only.** A drink of plain water douses a burning pet exactly as it douses a burning player, and that is vanilla's own doing: every water type's drink effects live on the game's shared water dispenser (which is why no water *item* appears to carry a cleanse) and include a cleanse of the Burning status tag — so Immolate rides along, and the hot-weather temperature states, which are not on that tag, do not. We run those very components, so nothing here is modelled. This key is consulted only if that dispenser cannot be read yet, and then these comma-separated status identifiers are matched by name instead — all of them, not first-wins, since a fire source may apply either spelling. Discovery: `statusdump`; `curedump` reports which of the two paths is live. |
 
 ## [Anchor] — the invisible combat body
 

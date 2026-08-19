@@ -266,6 +266,14 @@ register verb handlers and send with it rather than touching Photon. Two notes w
     actor), and the M→G event surface. The non-record verbs' guest half is the **injected
     `ICompanionNetMirror` seam** (below).
 
+**`ck.proxy.status` (2026-08-18).** A master→guest leg alongside the lifecycle verbs above: the
+master streams the proxied anchor's live status `IdentifierName`s to that row's owner on the upkeep
+tick, change-latched (an unchanged list is not resent). It exists because a guest's own pet is a
+proxy row whose anchor lives on the master, so the guest could not see what its pet was suffering —
+Beastwhispering's damage-over-time auras read this mirror where the master path reads the live
+anchor. A master that does not send it leaves the guest snapshot-less rather than wrong, and the
+consumer is expected to say so out loud rather than render a guess.
+
 **Guest net mirror.** `CompanionCombat` does not know the `ck.proxy.*` protocol:
 its target/stance mirroring and hit replay go through an injected `ICompanionNetMirror`. The
 consumer that speaks the proxy protocol sets the bond's factory once —

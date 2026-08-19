@@ -60,6 +60,11 @@ Five actions are also bound to keys (rebindable in the `[Keys]` config section):
 | `givefeather [loyalty\|quality] [qty]` | Spawn Pearlbird feathers of a given quality. |
 | `hr <0-5> [seconds]` | Stage a Health Recovery regen on the pet (feed-free). |
 
+Remedies go through this same pipeline: feeding the pet an Antidote, a bandage, a Panacea or a drink
+of water applies that item's *own* vanilla cleanse to the pet, exactly as using it on yourself would.
+A remedy is not food, so no species diet has to list it — but an item that would cure nothing is
+never consumed. `curedump` (below) shows what each carried item would cure right now.
+
 ## Skills & progression
 
 | Verb | What it does |
@@ -103,9 +108,11 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `echodump` / `echo` | Skill-echo roster / trigger. |
 | `warddump` / `lanterndump` | Ward-share / lantern-share state. |
 | `bandagedump` | Bandage-to-pet pipeline (resolved item/status, live anchor state, last action). |
+| `curedump` | Status cures: the switch, whether the live water dispenser is up (which of the two drink paths is live), the anchor's live statuses, and — per inventory item — what it can cleanse and whether it would cure anything *right now*. An item that would cure nothing is never consumed. |
 | `foodcats` | The 8 food-category tags → live tag names/UIDs. |
 | `speciesaudit` | Cross-table check for tameable-but-missing rows. |
 | `statusicons` | Pet status-icon pipeline (inputs → wanted → the player's actual statuses). |
+| `dotauradump` | Pet damage-over-time auras: the switch and tick count, the anchor's live statuses and the auras they imply, and per row whether that status's FX actually resolves (a status prefab carrying no FX prefab is the one silent failure). Force one by hand with CompanionKit's `aura <key> on\|off\|clear`. |
 | `caravandump` / `caravanhere` / `caravanspawn` / `caravanreroll` | Caravanner scent-sense diagnostics / re-run the caravanner's own vanilla spawn roll (host or solo only). |
 | `musicdump` / `musiccheck` | Combat-music state snapshot. |
 | `recipedump` | Crafting-recipe registration & learned state. |
