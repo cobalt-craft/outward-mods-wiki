@@ -22,12 +22,20 @@ all tunable in the [config reference](./config-reference.md) (`[Combat]`).
 
 ## Commanding your pet
 
-The **Command Pet** skill is an engage/disengage toggle:
+The **Command Pet** skill cycles through three orders — **Engage → Follow → Stay → Engage** — and its
+quickslot icon always shows the order your *next* press gives:
 
 - **Engage** — send the pet at your locked target (at any range), or at the nearest enemy in a cone in
   front of you if you have no lock.
-- **Disengage** — the pet stands down, stops scanning for targets, and returns to following you; the
+- **Follow** — the pet stands down, stops scanning for targets, and returns to following you; the
   encounter actually ends (combat music stops).
+- **Stay** — the pet stays passive *and* holds the spot it is standing on. It stays put until you give
+  another order, or until you walk far enough away (the normal leash distance, `[Pet] LeashDistance`)
+  that it teleports to you — at which point it is **following** again and the icon updates on its own.
+  Recalling it (F9) or changing area ends a Stay the same way.
+
+A staying pet does not defend itself — it is as passive as a following one. In co-op, a guest's staying
+pet shows as *following* on other players' screens (a cosmetic limit of the current stance mirror).
 
 Command Pet, Hunt as One, and the other pet abilities are learnable skills — see [Skills](./skills.md).
 

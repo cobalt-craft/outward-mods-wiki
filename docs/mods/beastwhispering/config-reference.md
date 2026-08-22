@@ -81,14 +81,16 @@ cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispe
 | `SpeciesYawOffsets` | *(empty)* | Per-species yaw overrides for rigs authored facing differently, as `Name=degrees` pairs. User-override layer over the shipped table. |
 | `FollowSpeed` | `4.5` | Pet base move speed (m/s) at full responsiveness. |
 | `MinFollowSpeed` | `4.5` | Species-stats mode: minimum follow speed so a slow species can't lose a sprinting player. Combat chases run true species speed. |
+| `LeashDistance` | `30` | Out-of-combat leash (m): further behind than this, the pet teleports to the nearest **off-screen** spot behind the camera (12.5–22.5 m back) and walks the rest in. Keep under 50 (the zone re-place distance). In combat `[Combat] CombatLeashDistance` applies. |
+| `CatchUpSpeed` | `8` | Catch-up ceiling (m/s): more than ~5 m behind you, a following pet ramps up to this over the next ~4 m (like the vanilla cosmetic pets) so it closes the gap on foot instead of hitting the leash. Also the follow-speed **ceiling**: captured species speeds often exceed it (a Veaber records 18 m/s) and 8 is the run-animation ceiling — faster skates. Scales with the F2 `speedmult` dev slider. `0` = the old flat, unclamped follow speed. |
 | `RestHealsPet` | `true` | Finishing a rest/sleep heals the pet in proportion to the sleep hours. |
 
 ## [Follow] — loafing near you when you stop
 
 | Key | Default | Effect |
 |---|---|---|
-| `LoafDistanceMin` | `2` | Nearest distance (m) a stopped pet settles from you instead of standing on you. |
-| `LoafDistanceMax` | `4` | Farthest settle distance. `0` = loafing off (settles on you). |
+| `LoafDistanceMin` | `3` | Nearest distance (m) a stopped pet settles from you instead of standing on you (2 before 2026-08-20). A catching-up pet aims for the band's middle behind your direction of travel. |
+| `LoafDistanceMax` | `5` | Farthest settle distance (4 before 2026-08-20). `0` = loafing off (settles on you). |
 | `LoafDistanceRepick` | `3` | How far you must move before the pet picks a new loaf spot (stops it orbiting you). |
 
 ## [Systems] — simulation, loyalty, hunger, stats

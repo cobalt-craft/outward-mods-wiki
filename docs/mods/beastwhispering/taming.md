@@ -13,8 +13,28 @@ time**.
 2. **Cook the taming food.** Each tameable species has its own food — its **"chow"** — cooked at a
    **cooking pot** from a handful of ingredients. One craft yields a few chow.
 3. **Use the chow near a wild one.** With the chow in your inventory, use it while a wild creature of
-   the right species is within taming range (**15 m** by default). The chow is consumed and the wild
-   creature becomes your pet.
+   the right species is within taming range (**15 m** by default). The chow is consumed and the
+   attempt **rolls** — see below. On success the wild creature becomes your pet.
+
+### The roll — taming can fail
+
+Every real attempt has three outcomes:
+
+| attempt | success | it refuses, but **lets you be** | it refuses and **attacks** |
+|---|---|---|---|
+| normal | 1 in 3 | 1 in 3 | 1 in 3 |
+| **from stealth** | 1 in 2 | 1 in 4 | 1 in 4 |
+
+- **From stealth** means you are **sneaking** (crouched) *and* the creature has not noticed you —
+  not locked onto you, not already fighting. Sneaking in the middle of a fight does not count.
+- **"Lets you be"** — for **60 s** the creature tolerates you: it will not come for you on sight or
+  hearing, and if it was already on you it backs off once. The moment **you or your pet hit it**, the
+  truce is over and it fights exactly as any wild creature would. Its pack-mates were never party to
+  the truce — they will still come.
+- **"Attacks"** — it turns on you immediately, and its pack joins.
+
+The chow is consumed on **every roll**, success or failure. The odds are per-install settings today
+(see below); per-creature odds are planned.
 
 The tamed creature keeps its own look and its own combat stats — see
 [Combat & companion](./combat-and-companion.md).
@@ -27,9 +47,30 @@ The tamed creature keeps its own look and its own combat stats — see
 
 ### No-waste rules
 
-The chow is only consumed on a successful tame. Using it when you **already own a pet**, or with **no
-wild target of that species in range**, does nothing — you get a short on-screen message and keep the
-chow.
+The chow is only consumed when an attempt actually **rolls**. Using it when you **already own a
+pet**, or with **no wild target of that species in range**, does nothing — you get a short on-screen
+message and keep the chow.
+
+### Settings
+
+In `BepInEx/config/cobalt.beastwhispering.cfg`, section `[Taming]`:
+
+```ini
+[Taming]
+## Every real taming attempt ROLLS. OFF = every attempt that passes the refusal ladder bonds.
+TameRollEnabled = true
+## Non-stealth odds (0-1). The attack band is whatever these two leave.
+TameSuccessChance = 0.3333333
+TamePassiveChance = 0.3333333
+## From-stealth odds (sneaking AND unnoticed).
+StealthTameSuccessChance = 0.5
+StealthTamePassiveChance = 0.25
+## How long a "lets you be" creature tolerates you (seconds).
+TamePassiveSeconds = 60
+```
+
+> BepInEx never migrates a changed default into an existing `.cfg` — an install made before these
+> keys existed gets them appended with their defaults on the next launch.
 
 ### Which creatures, which chow
 

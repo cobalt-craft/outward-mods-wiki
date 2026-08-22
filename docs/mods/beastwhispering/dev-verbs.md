@@ -71,7 +71,7 @@ never consumed. `curedump` (below) shows what each carried item would cure right
 |---|---|
 | `learnskills` | Teach the player all ten Beastwhispering skills at once. |
 | `gift` | Cast the Gift skill body (skill-free). |
-| `engage` / `disengage` / `petcommand` | The Command Pet skill's two orders and the toggle. |
+| `engage` / `disengage` / `stay` / `petcommand` | The Command Pet skill's three orders (Engage / Follow / Stay) and the cycle press. |
 | `special` | Fire the pet's Hunt as One signature attack. |
 | `petsigil <Fire\|Frost\|Air\|Blood> [here]` | The pet lays its own sigil circle at its feet (`here` drops it at yours). |
 | `huntasonesync` | Diagnostic for the Hunt as One / pet-special cooldown sync. |

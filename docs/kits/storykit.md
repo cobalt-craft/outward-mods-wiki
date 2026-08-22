@@ -102,6 +102,7 @@ Unknown verb or `help` lists them all.
 | `storynpcstatus <id>` | Full state for one NPC. |
 | `storynpcspawn <id> [here]` | Spawn an NPC at its placement, or `here` to place it two metres in front of you facing you. Master-only. |
 | `storynpcdespawn <id>` | Despawn a live NPC. Master-only. |
+| `npcmerchanttest [despawn]` | Spawn the built-in test merchant three metres ahead (mobile, tanky, Mefino's backpack, caravan stock, a Shop row), or remove him. Proves the shop path with no consumer mod. Master-only. |
 | `storyreload` | Build any templates that were never built (the `EnableStory=false` recovery), drop stale references, and re-assert placements for the current scene. |
 | `selftest` | Run the StoryKit self-test (`[SELFTEST] PASS/FAIL … DONE`). |
 | `storyrecon` / `qeventdump` / `qeventadd` / `qeventset` / `qeventdel` / `qeventage` / `qeventlisten` | Quest-event recon verbs — exploratory tooling, not part of the NPC/trainer surface. The event-writing ones create **save-baked** quest events under the `bw.srecon.*` prefix; use a throwaway save. |
@@ -198,6 +199,59 @@ var issues = TreeLayout.Validate(spec.Trainer.Tree);
 Assert.False(TreeLayout.HasErrors(issues));   // errors would refuse the NPC at build
 ```
 
+### Mobile, combat-capable and merchant NPCs
+
+The same `NpcSpec` can describe a **walking** NPC with an AI, combat stats, a faction, a backpack and
+a vanilla **shop**. Everything is opt-in; a spec that sets none of it is the classic pinned talker.
+
+```csharp
+NpcRegistry.Register(new NpcSpec
+{
+    Id = "mymod.pedlar", Name = "Orrin the Pedlar",
+    Mobile = true,                            // SideLoader melee AI + NavMeshAgent; NOT pinned
+    LookFollowEnabled = false,                // the agent owns yaw on a mobile body
+    Faction = "Merchants",                    // Character.Factions by NAME (locale-proof)
+    BackpackName = "Mefino's Trade Backpack", // item DISPLAY name; ' and ’ both match
+    Ai = new AiSpec { WanderSpeed = 1.1f, CanWanderFar = false, ChanceToAttack = 40f },
+    Combat = new CombatSpec
+    {
+        Health = 900f, Protection = 20f, DamageBonusMult = 0.25f,
+        TargetableFactions = new List<string> { "Bandits" },   // whom he will swing at
+    },
+    Merchant = new MerchantSpec
+    {
+        StockTableNameContains = "MerchantCaravanTrader",  // the roaming caravanner's regional table
+        FallbackItemNames = new List<string> { "Bandage", "Travel Ration" },
+        RefreshRateGameHours = 72f,                        // 0 = re-roll on every open
+    },
+    Dialogue = new DialogueSpec
+    {
+        Greetings = { "Care to lighten my pack?" },
+        Choices =
+        {
+            Choice.Shop("shop", "Let's see what you're carrying."),   // opens the vanilla shop
+            Choice.Reply("road", "Where to?", "Wherever pays."),
+        },
+    },
+});
+```
+
+| Field | Effect |
+|---|---|
+| `Mobile` | Builds a SideLoader melee AI (wander / suspicious / alert / combat states, NavMeshAgent, CharacterAI) and skips the static rig's NoFall, ground-snap and NpcPin. `CharacterStats` stays **enabled**. Move him by driving `AISWander` yourself (e.g. `FollowTransform`). |
+| `Ai` | Tuning for that AI: `WanderSpeed`, `CanWanderFar`, `CanBlock`, `CanDodge`, `ChanceToAttack`, `Passive` (targets nobody). Null = SideLoader defaults. Ignored (with a warning) unless `Mobile`. |
+| `Combat` | `Health`, `Protection`, `DamageResists[6]` (percent), `DamageBonusMult` (1 = unchanged), `TargetableFactions` (names; null = the faction's default). Requires `Mobile`. |
+| `Faction` | `Character.Factions` name. Empty = `NONE` (as before). Unknown name = refused. |
+| `BackpackName` | Equipped at spawn; resolved against the live item registry by display name, then prefab name. Unresolvable = refused. |
+| `Merchant` | Grafts the game's `Merchant` onto the body: `StockTableNameContains` (a live merchant's table, else a loaded `Dropable` asset), `FallbackItemNames` (generated into the pouch when no table / empty roll), `RefreshRateGameHours`, `NonSavable` (default true), `Buyer`/`Seller`. |
+| `Choice.Shop(id, text)` | A root-menu row that opens the shop through a real vanilla `ShopDialogueAction`. Requires `Merchant` (error otherwise). The talk prompt is hidden while the AI is in a combat/suspicious state. |
+
+Offline rules (`SpecValidation`): `Combat` without `Mobile` and a `Shop` row without `Merchant` are
+**errors**; `Ai` without `Mobile`, a `Merchant` with no `Shop` row and a `Shop` row inside a submenu
+are warnings. Specs carry no config of their own — the kit's only settings are in
+`BepInEx/config/cobalt.storykit.cfg` (see *Settings*); per-NPC numbers belong in the consuming mod's
+config.
+
 ### Public API
 
 | Member | Purpose |
@@ -207,13 +261,18 @@ Assert.False(TreeLayout.HasErrors(issues));   // errors would refuse the NPC at 
 | `NpcRegistry.Find(id)` | Look up a registered `NpcSpec`. |
 | `NpcRegistry.TrySpawn(id)` | Spawn at the spec's placement (master-only, duplicate-safe). |
 | `NpcRegistry.SpawnAt(id, pos, rotY)` | Spawn at an explicit position/yaw. |
+| `NpcRegistry.SpawnAtAndGet(id, pos, rotY)` → `Character` | Same, handing back the body (or the already-live one); null = not spawned, reason logged. |
+| `NpcRegistry.TryGetLive(id, out Character)` / `TryGetMerchant(id, out Merchant)` | The live body / its grafted vanilla `Merchant`. |
+| `NpcRegistry.Rebuild(id, NpcSpec)` / `ReplaceGreetings(id, greetings)` | Swap the dialogue of a STANDING NPC (greeting variants, new rows) without a despawn. Only the dialogue half is honoured live — body shape (Mobile/Combat/Merchant/Backpack/Faction) is fixed by the template. |
 | `NpcRegistry.Despawn(id)` / `Respawn(id)` | Remove, or remove-and-respawn at the (possibly retuned) placement. |
+| `NpcRegistry.Unregister(id)` → `bool` | Forget a spec: despawn the body if live, drop the SideLoader template (the UID can be registered again) and remove the entry. For per-spawn specs (DangerousRoads' road merchant). True = a body was live. |
 | `NpcRegistry.StatusDump(idOrNull)` | Log template/placement/live state for one NPC or all. |
 | `TreeLayout.Validate(SkillTreeDef)` → `List<TreeIssue>` | Offline layout validation; pair with `TreeLayout.HasErrors(...)`. |
 | `SpecValidation.Validate(NpcSpec)` → `List<SpecIssue>` | Offline spec-shape validation (trainer optional, inconsistent trainer refused); pair with `HasErrors` / `FirstError`. |
 
 Core data types: `NpcSpec`, `Placement`, `TrainerSpec`, `DialogueSpec`, `Choice` (with
-`Choice.Train` / `Choice.Reply` / `Choice.Menu` factories), `SkillTreeDef`, `SlotDef`, `SpecIssue`.
+`Choice.Train` / `Choice.Reply` / `Choice.Menu` / `Choice.Shop` factories), `AiSpec`, `CombatSpec`,
+`MerchantSpec`, `SkillTreeDef`, `SlotDef`, `SpecIssue`.
 
 ### Nested topic menus (`Choice.Menu`)
 
@@ -256,8 +315,11 @@ which is the fastest way to check a graph without talking to the NPC. A
 - **The kill-switch is recoverable.** Booting with `[Story] EnableStory=false` builds no templates
   at all. Turning it back on and running `storyreload` builds them then and there; a spawn attempt
   made while it's off names the kill-switch explicitly rather than blaming SideLoader.
-- **No quest engine.** Dialogue choices are Train and Reply only; there is no choice kind that fires
-  a quest/story event, and no quest state model.
+- **No quest engine.** Dialogue choices are Train, Reply, Menu and Shop; there is no choice kind
+  that fires a quest/story event, and no quest state model.
+- **Mobile NPCs are not live-verified yet.** The mobile/combat/merchant axis is built and
+  unit-tested offline; the in-game shop, walking and combat behaviour await a live session
+  (`npcmerchanttest`).
 - **The recon verbs write save-baked event UIDs.** `qeventadd` and friends create real quest events
   under the `bw.srecon.*` prefix — a Beastwhispering-flavoured name kept deliberately, since
   renaming it would orphan events already written into existing saves. They are exploratory tooling:

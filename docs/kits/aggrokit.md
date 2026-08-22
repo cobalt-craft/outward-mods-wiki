@@ -134,6 +134,9 @@ AggroKit uses the command channel **only** — it deliberately does not adopt Fo
 | `feud <nameA> <nameB> [nooverride\|both]` | Make two AIs fight; installs a targetability override for the pair unless `nooverride`; `both` forces both directions. |
 | `taunt [radius]` | Redirect every AI in radius onto the player. |
 | `calm [radius]` | Drop the target of every AI in radius. |
+| `truce [seconds] [name\|nearest]` | One AI tolerates the player for N seconds (default 60): no scan/squad acquisition, calmed once if already on you; **your hit on it ends the truce**. Other AIs unaffected. |
+| `truceoff [name\|nearest\|all]` | End one truce, or all of them. |
+| `truces` | List live truces (beast→player, owner, seconds left). |
 | `untargetable` / `targetable` | Toggle the player's `QuestNonTargetable` flag. |
 | `undetectable` / `detectable` | Toggle the player's detectability to 0 / 1. |
 | `shieldme` / `unshieldme` | Override so nobody may target the player / clear it. |
@@ -226,6 +229,43 @@ string forensics = TauntController.ForensicsFor(MyOwner);
 
 Accepted limitation: squad tactics can re-race the hold in pack fights — it is a sticky suggestion,
 not an absolute.
+
+### Truces (`AggroTruce`)
+
+The opposite of a taunt: one AI **tolerates one character** for a while. Built for Beastwhispering's
+failed-tame outcome ("the beast refuses you — but lets you be, for now"), pet-agnostic.
+
+```csharp
+// `beast` ignores `player` for 60 s; a hit from `player` OR from `myAnchor` ends it.
+AggroTruce.Hold(beast, player, seconds: 60f, owner: MyOwner, log: Log.LogMessage, myAnchor);
+
+AggroTruce.Release(beast, player, "fail-aggro");   // end one pair (no Calm, no ForceTarget)
+AggroTruce.ReleaseOwnedBy(MyOwner, "teardown");    // drop just yours
+AggroTruce.ReleaseAll("restore");                  // the hammer
+bool held = AggroTruce.IsHeld(beast, player);
+string forensics = AggroTruce.Forensics;
+```
+
+- **Pair-keyed**, unlike the global detection veto: the truced AI still fights everyone else, and
+  every other AI still fights the truced character. The squad may hand that character to every
+  *other* member — the pack does not honour one member's truce.
+- **What it blocks:** scan acquisition (`AICEnemyDetection.Detected`) and squad hand-outs /
+  contagion (`AISCombat.SetPreferredTarget`) — the same two prefixes the detection veto uses. At
+  `Hold`, an AI already locked on the character is calmed once.
+- **What breaks it:** a hit on the AI by the character or by any `alsoBreaks` character you name
+  (a pet's anchor, typically — the kit cannot know what a "pet" is). The break happens in the
+  `CharHurt` / `Defense` prefixes *before* the vanilla response runs, so the hit that ends the truce
+  is also the hit that aggroes the AI — exactly as if no truce had existed. A stranger's hit does
+  not break it.
+- **Releases:** expiry, the beast or character ceasing to exist (two consecutive 0.5 s sweeps
+  without the uid resolving), or an explicit release.
+- **Ownership** as everywhere else: `DevOwner` truces (the `truce` verb) are swept at a scene
+  load; yours survive a zone door and are yours to release. `restore` drops everything.
+- **Not covered:** Suspicious/investigate behaviour — the AI may still walk over and look; it
+  never locks.
+
+Bookkeeping (pair key, expiry, break rules, owner sweep) lives in the pure `TruceTable`, which
+`tests/AggroKit.Tests` covers without a game boot.
 
 ### Targetability overrides
 

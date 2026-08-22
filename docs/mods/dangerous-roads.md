@@ -88,6 +88,18 @@ spawner rather than the ambush director and the spawn menu disagreeing about the
 
 *Built 2026-08-20, not live-verified — see `docs/guest-mirror-harvest-testplan.md` (GM10–GM19).*
 
+## The wandering merchant
+
+Not every event is hostile. Sometimes the toast reads *"A merchant is on the road to the east"*: a
+**Travelling Merchant** with a trade backpack has appeared out of sight and is walking the road to
+one of this region's exits, where he leaves the map. Catch him and talk: you can open his shop
+(stocked like the region's roaming caravan trader), ask where he is headed, or let him go. He is
+friendly, hard to kill and nearly harmless — and if something attacks him and you drive it off, he
+says so the next time you talk. He is never saved and carries no loot.
+
+`[Events] MerchantWeight` is how often he comes up relative to an ambush (`0` = never);
+`MerchantCooldownSeconds` is the shortest gap between two merchants. Only one is on the road at a time.
+
 ## Known issues
 
 - **A Wolfgang can turn up on the wrong side.** The Wolfgang family's allegiance is driven by your
@@ -171,6 +183,18 @@ no config file-watcher of its own, so an edit alone does nothing until then).
 | | `SkipWhileInCombat` | `true` | Hold a wave back while you are already fighting. |
 | | `CombatDeferMaxSeconds` | `120` | Longest continuous stretch that hold may last before the wave fires anyway. `0` = unbounded, which can silence the mod entirely. |
 | | `ClusterRadiusMeters` | `12` | How tightly a wave's members group around the lead spot. |
+| `[Events]` | `DeckEnabled` | `true` | Draw each event from the deck (ambush or merchant). `false` = every event is an ambush, exactly as before the deck. |
+| | `AmbushWeight` | `1.0` | Relative draw weight of the hostile wave. |
+| | `MerchantWeight` | `0.35` | Relative draw weight of the wandering merchant (`0` = never). |
+| | `MerchantCooldownSeconds` | `600` | Shortest gap between two merchants, stamped when drawn. |
+| `[Merchant]` | `Health` | `900` | The merchant's max health. Applies to the next merchant. |
+| | `Protection` | `20` | Flat damage protection. Next merchant. |
+| | `DamageMult` | `0.25` | Multiplier on the damage he deals (`1` = unchanged). Next merchant. |
+| | `WalkSpeed` | `1.1` | His walking speed modifier. Live. |
+| | `ExitRadius` | `6` | How close to the exit counts as arrived (he despawns there). Live. |
+| | `StuckSeconds` | `90` | Despawn after this long with no progress outside combat (`0` = never). Live. |
+| | `MinRouteMeters` | `150` | Prefer an exit at least this far from where he appears. Next merchant. |
+| | `DefendsHimself` | `true` | Fights back against bandits (never you). `false` = fully passive. Next merchant. |
 | `[Placement]` | `MinDistanceMeters` | `40` | Closest a creature may appear. |
 | | `MaxDistanceMeters` | `200` | Farthest a creature may appear. |
 | | `PathLengthRatioMax` | `1.8` | Reject a spot whose walking distance exceeds this multiple of its straight-line distance. |
@@ -210,6 +234,17 @@ MinCount = 1
 MaxCount = 3
 SkipWhileInCombat = true
 
+[Events]
+DeckEnabled = true
+AmbushWeight = 1.0
+MerchantWeight = 0.35
+MerchantCooldownSeconds = 600
+
+[Merchant]
+Health = 900
+WalkSpeed = 1.1
+StuckSeconds = 90
+
 [Placement]
 MinDistanceMeters = 40
 MaxDistanceMeters = 200
@@ -241,6 +276,10 @@ lists them all.
 | `roadsprobe [x y z]` | Run the verification pipeline on one point and print every stage. No arguments = where you stand. |
 | `roadsmark` | Pick the best anchor right now, log it and draw a marker ray. Spawns nothing. |
 | `roadsnow [count] [species…]` | Force a wave immediately, through the real pipeline. |
+| `roadsdeck [draw\|<id>]` | The event deck: cards, live weights, cooldowns, last draw. `draw` forces a draw; `<id>` (`ambush`, `merchant`) forces that card. |
+| `roadsmerchant [status\|spawn\|despawn\|rescue\|goto <exit>]` | The wandering merchant: where he is / put one on the road now / remove him / fake the rescue so the thanks greeting shows / re-route him to an exit index from `roadsexits`. |
+| `roadsexits` | Census of this scene's zone exits: index, destination, distance and bearing from you. |
+| `roadsstock` | Which live merchant in the scene carries the caravan stock table the road merchant copies. |
 | `roadsarm` | Arm the director so the next wave is due immediately. |
 | `roadsdisarm` | Stop the ambush timer until the next region change. |
 | `roadswarm <species>` | Queue a species for background prewarm now. |

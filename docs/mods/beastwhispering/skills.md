@@ -31,7 +31,7 @@ hanging off the outer columns. Rows are listed bottom (entry) to top.
 | Skill | Type | Cost | Prerequisite | Effect |
 |---|---|---:|---|---|
 | **Scatology** | Passive | 50 | — (entry) | Slain tameable creatures may drop their **taming-food recipe scroll**. This is the discovery path for taming any species. |
-| **Command Pet** | Active | 100 | Scatology | An Engage / Disengage toggle. **Engage**: send the pet at your locked target, or the nearest enemy in front of you. **Disengage**: recall it to your side to wait passively until told again. |
+| **Command Pet** | Active | 100 | Scatology | One button, three orders in a cycle: Engage → Follow → Stay. **Engage**: send the pet at your locked target, or the nearest enemy in front of you. **Follow**: recall it to your side to wait passively. **Stay**: it holds the spot it is standing on — until your next order, or until you get far enough away that it has to come find you (then it is following again). |
 | **Beast of Burden** | Passive | 100 | Scatology | +5 carrying capacity on your equipped backpack while a pet travels with you. |
 | **Release Pet** | Active | 50 | Scatology | End the bond for good — the animal returns to the wild and the pet is gone. |
 | **Wild Unknown** | Passive · **breakthrough** | 500 | (breakthrough) | Two effects. Your pet may **follow you across region travel** (the long, ration-consuming journeys) instead of the bond breaking; and, understood at last, it **fights at full strength**. Without this skill the pet holds back, dealing reduced damage. |
@@ -66,7 +66,7 @@ the `[Skills]` section) to restore the older "always on" behaviour.
 
 The active skills (Hunt as One, For the Kill, Heal Pet, Gift of the Wild, Command Pet, Release Pet)
 work like any Outward skill: assign one to a quickslot and press it. Command Pet's quickslot icon
-changes to name the action your **next** press will perform (Engage or Disengage). Hunt as One and For
+changes to name the action your **next** press will perform (Follow, Stay or Engage). Hunt as One and For
 the Kill play a real weapon flourish, so they work with a melee weapon or a bow equipped.
 
 ## See also
