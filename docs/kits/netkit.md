@@ -228,6 +228,57 @@ store.FlushTo(actor);                  // Owner authority only: on-demand target
                                        //  are idempotent. Returns the count sent; 0 on Master.
 ```
 
+**Store authorities — `Master`, `Owner`, `PeerOwned`**
+
+| Authority | Who holds the rows | Receive guard | Owner binding |
+|---|---|---|---|
+| `Master` | the master, after arbitrating | runs on the master machine only | yes (`ResolveUidOwner`) |
+| `Owner` | every machine mirrors the broadcaster | sender must be the master, self-echo dropped | no |
+| `PeerOwned` | every machine mirrors every peer | self-echo dropped only | no — refused |
+
+`PeerOwned` is `Owner` without the master-in-the-middle: **any** peer holds and broadcasts its own
+rows, and every machine (the master included) mirrors them. Everything `Owner` does in the broadcast
+direction — apply-local-first, `SendToOthers`, the targeted flush on a peer's scene-ready edge, the
+retried release, `OnSet`/`OnCleared` on every mirror — `PeerOwned` does identically.
+
+*Key from sender.* Dropping the master-sender demand is only safe because a `PeerOwned` receiver
+**discards the uid that rode the wire** and recomposes the row key from the message's sender actor
+(the slot is preserved). Actor numbers are assigned by the Photon server and stamped by the relay,
+so a peer cannot forge one — the only row a sender can ever address is its own. That single
+substitution replaces the whole authorization apparatus, which is why an owner-binding resolver is
+meaningless here and is **refused at construction** rather than silently ignored. It also means the
+table's rebind and foreign-release refusals can never fire over the wire on such a store; they stay
+in place and stay unit-tested, but seeing them idle is the design working. Row keys on a `PeerOwned`
+store therefore read as `actorId` / `actorId:slot` — read them back with the actor id, not your uid.
+Outside a room the local actor is `0`, so `Announce` refuses (no send, no local row) until the join
+completes; your next push carries it.
+
+*One logical record per slot.* Because the table key is the **sender**, every consumer key a `PeerOwned` store announces at the same slot lands on the **same row** — two different uids at slot 0 would overwrite each other on every refresh. Use one constant key per store (the warm mirror uses `"warm"`), and the slot when you genuinely need several rows per peer.
+
+*`ReapAbsentActors`* (default `false`) is an opt-in per-store sweep, available to both broadcast
+authorities, that drops rows whose bound actor is no longer in the room. `OnPeerLost` is the fast
+path, but a peer readiness reset does not raise it, so a departed peer's row can otherwise survive
+as a ghost. It is off by default so the shipped spawn / effigy / petfx stores stay byte-identical.
+`netdump` shows `authority=`, `reap=on` when the sweep is enabled, and — gated on that same flag —
+`present=yes/no` per row, so a store that does not reap does not grow a column nobody acts on.
+SpawnKit's warm mirror is the first shipped consumer (`warm` on the `sk` channel: one row per peer,
+keyed `"warm"`, reap on).
+
+Registration is the one line:
+
+```csharp
+var status = ch.RegisterStore("peerstatus", new StoreOptions {
+    Authority         = StoreAuthority.PeerOwned,   // no ResolveUidOwner — it is refused here
+    ReapAbsentActors  = true,
+    Verbs = new StoreVerbs { Announce = "mymod.status", Release = "mymod.status.clear" },
+});
+```
+
+Pick `PeerOwned` when each peer is simply the truth about its own state and nothing needs to
+arbitrate (per-peer presence/status fan-out). Pick `Owner` when the master mediates the broadcast
+(the shipped effigy/spawn shape). Pick `Master` when the master must arbitrate the rows themselves
+and a sender↔uid authorization is required.
+
 **API notes and traps**
 
 - **Send targets and solo play.** In Outward's offline session the local player is the master.
@@ -247,6 +298,12 @@ store.FlushTo(actor);                  // Owner authority only: on-demand target
 - **Late channel registration works.** A channel registered after a peer's hello already arrived
   (e.g. at pack-load time) is immediately evaluated against the stored hellos, so compatible peers
   read as ready without waiting for a re-hello.
+- **`RefreshRpcMonoBehaviourCache()` is a harmless no-op precaution, NOT mandatory.** The
+  shipped game's `PhotonNetwork.UseRpcMonoBehaviourCache` is `false`, so PUN re-scans the view's
+  MonoBehaviours on every RPC dispatch and a component added after the view existed is found
+  without it. NetKit still calls it after mounting `NK_Bus` because it costs nothing; an older
+  SpawnNet header claimed the call was mandatory, and that claim was wrong (decompile-verified at
+  the 2026-07-18 extraction — `docs/netkit-plan.md`).
 - **Room-join asymmetry.** A room join clears the ready set without firing `OnPeerLost`. For
   room-change cleanup, subscribe to `Net.OnRoomChanged` rather than relying on ready/lost symmetry.
 - **Mirror null-build semantics.** A `build` that returns `null` means "nothing to mirror right

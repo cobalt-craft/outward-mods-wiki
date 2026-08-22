@@ -187,6 +187,15 @@ the pack's copy and keeps its own. `RegisterAll` logs one line naming the domain
 exclusions it honored, and warns about any exclusion that matched no verb — a typo in an exclusion
 would otherwise silently leave the pack's copy registered.
 
+Who takes the pack today: Beastwhispering (excludes `sethp` and `groundprobe`, keeping its
+pet-aware supersets), Hireling, SkillKit, SpawnKit (the full pack) and HelloOutward (the scaffold
+template, so a new mod inherits it). AggroKit deliberately takes only the command channel, not
+the pack. Registries are per mod, so two mods owning the same verb name never collide; the pack's
+log tags are a byte-stable grep contract. Sibling packs one layer up live where their failure
+modes live: `SkillKit.SkillVerbs` (castdump/castclear/skillverify/skilldump/skillitemdump) and
+`DonorKit.DonorVerbs` (photondump/audiodump/audioprune/terraindump/terrainfix, also answering on
+`ck_cmd.txt`).
+
 ### Verb homing rule
 
 Where a dev verb lives is decided by two rules:
@@ -335,6 +344,21 @@ Two traps worth knowing:
   logged, never silent.
 - **`Notify.Log`** is a settable static; assign it (`Notify.Log = Logger`) in your `Awake` so toasts
   are mirrored under your mod.
+
+### What stays OUT of the kit (the extraction rule)
+
+ForgeKit was built (2026-07-07) when the third copy of the command channel appeared — that was the
+agreed trigger for lifting shared dev tooling into a kit. The rule that governs what gets lifted
+next:
+
+- **Not for the kit** (companion-specific — extracting would force it): `BodyFactory` /
+  `CompanionBody` / `Pet` / `PetSaveStore`, and the pet compute layer (loyalty, temperature, etc.).
+- The brain-strip / inactive-holder clone is a clever Outward *recipe*, not an API: it is
+  documented in the repo's `education/` notes, not turned into kit surface.
+- The compute/test split (`core/` netstandard2.0 + `tests/` xUnit, zero game boots) and the
+  deploy/log scripts (`scripts/`) stay **conventions**, not kit code.
+- When something else proves reusable, **first make it pet-free and isolated inside its consuming
+  mod, then lift it** — never extract straight from a tangled call site.
 
 ## See also
 

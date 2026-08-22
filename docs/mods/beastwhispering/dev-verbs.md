@@ -125,7 +125,7 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `combatcheck` | Player combat state + the anchor weld health. |
 | `groundprobe` | Measure the navmesh under the player, puppet and anchor (Beastwhispering's pet-aware version of the shared verb). |
 | `sniff` | Force a scent scan now. |
-| `selftest` | Run the compute-layer self-test (F10). |
+| `selftest` | Run the compute-layer self-test (F10). `SelfTest.cs` runs `Beastwhispering.Core` in-game and logs `[SELFTEST] PASS/FAIL …` lines ending in one `DONE` summary; `[SelfTest] RunSelfTestOnLoad=true` runs it at boot so one unattended headless boot yields the full report. |
 
 ## Retune tables live (`reload…`)
 

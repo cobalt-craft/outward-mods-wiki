@@ -1,7 +1,7 @@
 # SpawnKit — spawn any creature, anywhere
 
 **SpawnKit** is a kit for Outward that spawns creatures at runtime as **real vanilla hostiles** — and
-an in-game menu that lets you do it yourself. Press **F11**, pick a creature, and it appears beside
+an in-game menu that lets you do it yourself. Press **\\** (backslash), pick a creature, and it appears beside
 you. It's for players who want to stage fights, and for modders who want a one-line creature spawn.
 
 > **Alpha.** The core spawn / despawn / AI loop is solid, but you will hit rough edges (see *Known
@@ -29,7 +29,7 @@ Spawns are **ephemeral**: they never enter your save file, and they vanish when 
 
 ### Using the menu
 
-Launch the game, load a save, and press **F11** for a draggable window listing every creature you
+Launch the game, load a save, and press **\\** (backslash) for a draggable window listing every creature you
 can spawn.
 
 - **●** means the creature is ready — it spawns instantly.
@@ -37,8 +37,8 @@ can spawn.
   *How it works*). Click **Prewarm** to pay that cost up front instead.
 - Set a count, hit **Spawn**, and use **Despawn All** / **Kill All** to clean up.
 
-The key is rebindable (`[Menu] MenuKey`; `Backslash` is a classic debug-menu choice). The menu closes
-on **Esc**, on **F11** again, or when you open a vanilla menu.
+The key is rebindable (`[Menu] MenuKey`, default `Backslash` — a classic debug-menu choice). The menu
+closes on **Esc**, on **\\** again, or when you open a vanilla menu.
 
 ### Installing
 
@@ -77,6 +77,121 @@ an expedition: SpawnKit takes the whole party through a loading screen to the do
 (saving on each leg), and from then on that creature spawns like any other. Use
 `spawnexpedition <species>`, or the menu's expedition button.
 
+## Room-wide warm mirror (co-op)
+
+**The problem.** A cold spawn is cheap on the machine that chose it and brutal on the one that
+didn't. When the host spawns a species a *guest* holds no body template for, that guest has to
+additively load a whole donor scene on its main thread to mirror the creature — measured in the
+field at **3.6 s (Obsidian Elemental), 12.1 s (Ghost) and 14.7 s (Elder Medyse)**, mid-fight, in a
+dungeon. Photon's 10 s disconnect timeout sits inside that range, which is why the reported symptom
+was a guest "constantly disconnecting during fights". The guest-side backstop (see
+`docs/guest-mirror-harvest-testplan.md`) can *refuse* such a spawn, but only the host can avoid
+**choosing** it — and for that the host has to know what every guest already holds.
+
+**The mechanism.** Every peer publishes its own warm set. SpawnKit registers one
+[NetKit](./netkit.md) replicated store, `warm`, on the `sk` channel with **PeerOwned** authority:
+each peer owns exactly one row, the receiver keys that row by the unforgeable sender actor, and
+every machine — host included — mirrors every other peer's row. The payload carries the peer's
+mintable species, its proven **dead ends**, and its **remaining donor-harvest budget**, so the host
+never wants forever against a guest that structurally cannot comply.
+
+- Publishes are **change-latched on the encoded bytes** (`sk.warmset`): a re-publish of an unchanged
+  set sends nothing, so the mirror can be as trigger-happy about marking itself dirty as it likes.
+- A **30 s refresh** heartbeats each row so a dropped message cannot leave a mirror stale forever,
+  and the store **flushes to a late joiner** on its scene-ready edge — nobody has to ask.
+- Events (a template cached or evicted, a finished warm, scene-ready, room change) are *latency*; a
+  **2 s verification poll** is *correctness*, because the expedition cache has no change seam at all.
+- There is deliberately **no `sk.warmed` confirm message**. The row *is* the confirm: it lands
+  exactly when the set actually grew. Two paths to the same fact with different arrival orders is
+  how you get "the host thinks it's warm and the mirror says cold".
+- `sk.want` (master → one actor) is the only other new verb: *"warm this species when it is safe,
+  at the head of your queue."* The guest still decides when that is — out of combat, no save pending.
+
+**The host gate.** `[Coop] RoomWarmMode` decides how strictly a spawn is gated on the party rather
+than on this box:
+
+| Mode | What the host does |
+|---|---|
+| `Local` | ignores peers entirely — the pre-co-op behaviour |
+| `RoomDegraded` *(default)* | spawns anyway, **names the cold actors in the log**, and asks them to warm the species so the next one is instant |
+| `RoomStrict` | refuses the spawn (`FailReason.SpeciesColdOnPeer`, actors named) |
+
+`RoomDegraded` is the default because a road ambush that silently stops arming is a worse experience
+than one guest paying a donor load. `RoomStrict` is the setting for a party that would rather see
+fewer enemies than have anyone stall mid-fight.
+
+Two verdicts are kept apart on purpose. **`ColdLocally`** means *this* machine can't mint it — not a
+peer's fault, and never reported as one. **`SpeciesColdOnPeer`** means the host could have minted it
+and a named guest could not; that is the only verdict the room gate owns, and the only one a
+`sk.want` can fix. Dev verbs escape per call with a trailing **`force`** token (`spawn`, `spawnex`),
+which sets `SpawnOptions.IgnoreRoomWarm` — deliberately not a config key, because a forgotten global
+would silently disable the gate for every consumer.
+
+**The fluke path.** A miss is not fatal, it is a request. The host keeps a **want book** per
+(actor, species): send, then wait out `[Coop] RoomWarmRequestTimeoutSeconds` (30 s, doubling to
+`RoomWarmRequestMaxTimeoutSeconds`) before re-asking, up to `RoomWarmRequestAttempts` times, then
+give up once with a single `[MIRROR]` line. A guest that reports the species a **dead end**, or that
+has **zero harvest budget left**, is given up on *immediately* — that is a structural no, not a slow
+yes. `RoomWarmRequestCap` bounds how many species one `RequestRoomWarm` call may ask of one peer
+(3), and the caller's priority order goes to **every** peer, so the room-wide intersection converges
+instead of two guests warming disjoint halves.
+
+**Forgiven cold-unsafe.** A guest can still refuse a spawn with `sk.fail(cold-unsafe)` *after* the
+room gate was satisfied — an eviction that lost a race, not a lie. The first such refusal for a uid
+is **forgiven**: the host logs `[SKNET] cold-unsafe DESPITE room gate`, sends `sk.want`, and keeps
+the creature so the guest's own detached acquire can finish. When the guest's set then grows, the
+host **re-flushes** the forgiven spawns to it (`[SKNET] re-flushed N forgiven spawn(s)…`); a pure
+ledger holds a ~60 s safety net, so a forgiven creature that is never mirrored despawns rather than
+lingering as a ghost, and a second refusal for the same uid despawns immediately. See
+`SpawnNet.OnFail`. That log line is the Phase B/C regression alarm — in a healthy `RoomStrict`
+session it should never appear.
+
+**Invariants worth knowing.**
+- **An unmodded or still-loading peer never vetoes.** Only a peer that has actually published a warm
+  set participates; anyone else is invisible to the gate, exactly as before.
+- **Solo play is byte-identical in every mode.** Zero participating peers ≡ local truth.
+- **"The guest is warm for 4 of 13 species" is normal, not a bug.** A guest warms what it has been
+  asked for and what it has mirrored; the intersection grows over a session.
+- **There is a quiet window right after a join.** Until a fresh guest's row lands and the first
+  `sk.want`s are answered, the room-wide intersection is small and `RoomStrict` will arm fewer
+  ambushes. That is the gate working.
+
+**Seeing it.** `skwarmdump` prints this machine's set, dead ends and remaining budget, then every
+peer's row — `Unmodded` (no compatible SpawnKit), `HelloedNoRow` (helloed, set not in yet), or
+`Participating` with its age, species and budget — then the room-wide intersection and the whole want
+book. `spawnlist`, the spawn menu and DangerousRoads' `roadsroster` share one glyph key:
+**● room-wide warm · ◐ warm here, cold on a peer · ○ cold here**.
+
+**Wire version.** These verbs ship under `sk` channel version **0.5.0**, matched by exact ordinal
+comparison. A mixed-build room does not half-work: the handshake reports the peer as incompatible,
+says so loudly in the log, and co-op spawning stays off toward it. Update everyone together.
+
+### Warm-mirror settings
+
+`BepInEx/config/cobalt.spawnkit.cfg`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `[Coop] RoomWarmMode` | `RoomDegraded` | `Local` / `RoomDegraded` / `RoomStrict` — how strictly a spawn is gated on the whole party being able to mint the species (see above). |
+| `[Coop] WarmSetPublishSeconds` | `1` | Minimum seconds between two publishes of this machine's warm set; every dirty event coalesces into one. Raising it costs freshness, not correctness. |
+| `[Coop] RoomWarmRequestCap` | `3` | Max species asked of ONE peer per `RequestRoomWarm` call. `0` or negative = uncapped. |
+| `[Coop] RoomWarmRequestTimeoutSeconds` | `30` | How long the host waits for a guest to answer an `sk.want` before re-asking. Long on purpose — answering means running a donor load, deferred to a safe moment. |
+| `[Coop] RoomWarmRequestMaxTimeoutSeconds` | `120` | Ceiling on the doubling backoff between retries. Values below the timeout are clamped up, never rejected. |
+| `[Coop] RoomWarmRequestAttempts` | `3` | How many times the same `sk.want` is sent before the host stops asking for that (peer, species) this session. Minimum 1. |
+
+```ini
+[Coop]
+RoomWarmMode = RoomDegraded
+WarmSetPublishSeconds = 1
+RoomWarmRequestCap = 3
+RoomWarmRequestTimeoutSeconds = 30
+RoomWarmRequestMaxTimeoutSeconds = 120
+RoomWarmRequestAttempts = 3
+```
+
+> **Built 2026-08-20, not live-verified.** Rows GM10–GM19 in
+> `docs/guest-mirror-harvest-testplan.md` are the live gates.
+
 ## Settings
 
 `BepInEx/config/cobalt.spawnkit.cfg`, created on first launch:
@@ -92,7 +207,7 @@ an expedition: SpawnKit takes the whole party through a loading screen to the do
 | `[Spawner] DefaultCorpseLingerSeconds` | `0` | Seconds a `NoBody` corpse lingers (death-anim time) before it's removed. |
 | `[Spawner] ForceLootableEnabled` | `true` | Re-enable a disabled loot component on a spawn so its corpse is lootable. Doesn't invent loot — a creature with no drops still drops nothing. |
 | `[Menu] EnableMenu` | `true` | The in-game spawn menu. |
-| `[Menu] MenuKey` | `F11` | Key that toggles the menu. |
+| `[Menu] MenuKey` | `Backslash` | Key that toggles the menu (rebindable). |
 | `[Expedition] EnableExpeditions` | `true` | Allow fetching a region-only species via a real loading-screen round trip. Off = those rows only spawn if something already cached the body. |
 | `[Expedition] ConfirmMenuExpedition` | `true` | Require a second click in the menu to launch an expedition (a stray click shouldn't teleport the party and write a save). |
 | `[Coop] EnableCoopSpawns` | `true` | Replicate host spawns to guests running SpawnKit. Off = spawns refuse in a co-op room. |
@@ -117,7 +232,7 @@ SpawnDistance = 5
 
 [Menu]
 EnableMenu = true
-MenuKey = F11
+MenuKey = Backslash
 
 [Expedition]
 EnableExpeditions = true
@@ -139,8 +254,8 @@ Unknown verb or `help` lists them all.
 
 | Verb | What it does |
 |---|---|
-| `spawn <species> [count]` | Spawn 1 or more beside you. Names may contain spaces: `spawn Armored Hyena 3`. |
-| `spawnex <species> [dist=N] [life=N] [faction=Name] [owner=tag] [body=vanilla\|none] [linger=N] [keepquest]` | One spawn with the full per-spawn option surface. |
+| `spawn <species> [count] [force]` | Spawn 1 or more beside you. Names may contain spaces: `spawn Armored Hyena 3`. `force` ignores the room-wide warmth gate for this call. |
+| `spawnex <species> [dist=N] [life=N] [faction=Name] [owner=tag] [body=vanilla\|none] [linger=N] [keepquest] [force]` | One spawn with the full per-spawn option surface. |
 | `despawnall [kill]` | Remove every spawn. `kill` gives them a real death (animation + loot) instead of deleting them. |
 | `despawnowner <tag> [kill]` | Remove only spawns tagged with `<tag>`. |
 | `spawnlist` / `spawndump` | List spawnable creatures / show what's live right now. |
@@ -151,6 +266,7 @@ Unknown verb or `help` lists them all.
 | `spawnmenu` | Toggle the in-game menu regardless of `MenuKey`. |
 | `lootprobe` | Per-spawn corpse-loot diagnosis. |
 | `bonedump` | Skeleton/rig diagnosis for a spawned body (the "stretched to a vertical line" failure mode). |
+| `skwarmdump` | Warm-mirror census: this machine's warm set, every peer's row, the room-wide intersection and the want book (see *Room-wide warm mirror*). |
 | `skcoopdump` | Co-op state on this machine: handshakes, mirrored spawns, message counters. (More co-op dev verbs under `help`: `skinject` / `skfail` / `skdrop` / `skresync` / `skgone` / `skstream` / `skfollow`.) |
 | `selftest` | Sanity-check the install; look for `[SELFTEST] … DONE` in the log. |
 
@@ -168,7 +284,10 @@ SpawnKit also registers ForgeKit's shared [CommonVerbs](./forgekit.md) pack on t
   *doesn't* have SpawnKit, in-room spawns refuse and the log names who, because to them the spawn
   would be an invisible ghost. `[Spawner] AllowSpawnInRoom=true` overrides that, knowingly; the whole
   co-op wire rides [NetKit](./netkit.md).
-- **⚠ Everyone in a co-op room needs the SAME SpawnKit build (0.4.0 or newer on all boxes).** The
+- **⚠ Everyone in a co-op room needs the SAME SpawnKit build (0.5.0 on all boxes).** 0.5.0 added the
+  warm-mirror verbs (`sk.warmset` / `sk.warmclr` / `sk.want`) and the `sk` channel version is compared
+  by exact ordinal match, so a 0.4.0 peer is reported incompatible and co-op spawning stays off toward
+  it — loudly, not half-working. The
   0.4.0 co-op wire changed shape when the spawn lifecycle moved onto NetKit's replicated-record
   store, and it is deliberately not backward compatible. Mixing 0.4.0 with an older build doesn't
   half-work — the handshake reports the peer as incompatible and co-op spawning stays off toward

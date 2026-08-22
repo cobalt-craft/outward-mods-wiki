@@ -43,6 +43,19 @@ and force a Proton compatibility tool — a native "Steam Linux Runtime" won't l
 bare `winhttp`, **without** a `.dll` suffix; some Proton versions ignore the suffixed form and the
 game then runs vanilla.
 
+Three Linux details that look wrong but aren't, and one diagnostic:
+
+- A wrapper prefix in the same launch option (a gamemode/keyboard-remapper style
+  `WINEDLLOVERRIDES="winhttp=n,b" some-wrapper %command%`) is harmless — BepInEx still loads.
+- The game's working directory is the parent `…/steamapps/common/Outward`, **not** `Outward_Defed/`.
+  That is normal for Outward DE; nothing needs fixing.
+- A fresh Steam install defaults to the IL2CPP branch, and on it the whole stack fails *silently*:
+  Doorstop's `winhttp` loads, finds no Mono runtime to hook, and the game runs vanilla with no
+  `LogOutput.log` and no preloader crash. Check the branch (step 1) before anything else.
+- To diagnose a BepInEx that never appears, launch once with `PROTON_LOG=1` in the launch option and
+  grep `~/steam-<appid>.log` for `winhttp`, `GameAssembly` and `Doorstop` — it shows whether the DLL
+  override took effect and which runtime the game actually started.
+
 ## 3. Install the mods
 
 Three ways:
@@ -145,6 +158,7 @@ see each mod's *Commands* section.
 | Nothing loads on Linux | Missing launch option / native runtime | Set the `WINEDLLOVERRIDES` option and force Proton (step 2) |
 | Beastwhispering doesn't load | SideLoader isn't installed | Install SideLoader — it's a hard requirement |
 | Cloudward never installs a fetched mod update | `Cloudward.Preload.dll` is in `plugins/` | Move it to `BepInEx/patchers/` |
+| Game hangs (often a load deadlock) and won't die on Linux | `pkill -x wine64-preloader` / `pkill -f <appid>` miss it: the game process's comm is `Outward Definit` and its cmdline lacks the appid | `pgrep -f 'Outward Definitive Edition'`, pick the PID whose `/proc/<pid>/comm` is `Outward Definit` (a load deadlock shows state `S` on `futex_wait_multiple`), then `kill -9 <pid>`. Note `pgrep -f` also matches your own shell — use `pgrep -x 'Outward Definit'` when you only need a yes/no "is it running" |
 
 The log to read is `BepInEx/LogOutput.log` in the game folder. If it doesn't exist at all, BepInEx
 never loaded — that's step 1 or step 2, not the mods.

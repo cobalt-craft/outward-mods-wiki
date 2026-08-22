@@ -509,6 +509,27 @@ Pass `retainOwnerWhenEmpty: false` if you want ownership claimed only when stack
 - **Beast bodies are the primary path.** Humanoid bodies use a different ghost stand-in route that has
   had far less mileage.
 
+### Name drift — reading older docs
+
+CompanionKit was lifted out of Beastwhispering on 2026-07-06 (`docs/companionkit-plan.md`), and
+pre-extraction docs, test reports and commit messages use the old names. The map:
+
+| Today | Was (Beastwhispering) |
+|---|---|
+| `BodyFactory` | `CreatureCloner` |
+| `CompanionBody` | `PuppetFollower` |
+| `CompanionAnchor` (now an INSTANCE per bond) | `PetAnchor` (static) |
+| `CompanionCombat` (stance lives on the `Companion`/Pet aggregate) | `PetCombat` |
+| `AttributeCapture` | `StatCapture` |
+| `CreatureAttributes` (Core) | `PetAttributes` (`PetStatTuning` stayed in Beastwhispering) |
+| `TargetPick` (Core) | `Core.PetCommand` |
+| `DonorHarvest` + guards | same names, moved as-is (and on to DonorKit on 2026-07-26) |
+
+`LocoRig.cs` (added 2026-08-18) has no old name: it centralizes "who actually renders this body" —
+it finds the skin-driving animator (`CompanionBody.FindSkinAnimator`) and writes locomotion params
+to it AND to the owned root animator when they differ. It is the one seam a future rig-class fix
+should touch instead of re-scattering parameter writes.
+
 ## Compatibility
 
 Outward must be on its **Mono** Steam beta branch, not the default IL2CPP build. If the game runs but no

@@ -59,6 +59,35 @@ minute.
 - Arrivals are announced by an on-screen toast naming the compass direction, and marked on the HUD
   compass while they are in range.
 
+### In co-op
+
+The "already resident" test above is now a **party** test, not a per-machine one. If the host picks a
+species a guest has no body for, that guest has to load a donor scene mid-fight — measured at 3.6 s
+to 14.7 s in the field, which is long enough to drop them from the room. So DangerousRoads asks
+[SpawnKit](../kits/spawnkit.md) whether the *whole room* can mint a species, not just this box:
+
+- **The roster predicate is room-wide.** A species is a candidate only if it can be minted here *and*
+  by every peer that has published a warm set. Unmodded and still-loading players never veto, and
+  solo play behaves exactly as before.
+- **Prewarming is party-aware.** The region's warm order puts first the species *the party* lacks but
+  the host already holds — one request and they become room-wide spawnable at no cost to the host —
+  then the ones nobody holds, then the rest.
+- **Arming a region pushes a warm request.** When the ambush director arms for a new region it hands
+  SpawnKit its top prewarm targets, so every guest starts warming the same short list and the shared
+  roster fills instead of each machine warming a different half of it.
+- **When peers cost you species, it says so.** The log names the species that were warm here but cold
+  in the room and who was cold, reprinting only when the situation changes, and one on-screen toast
+  per region arm tells the player the ambush pool is temporarily smaller. `roadsroster` carries a
+  room column: **● room-wide warm · ◐ warm here, cold on a peer · ○ cold here**.
+
+**DangerousRoads adds no config for this.** How strict the party gate is lives in SpawnKit's own
+`[Coop] RoomWarmMode` (`BepInEx/config/cobalt.spawnkit.cfg`, default `RoomDegraded` — spawn anyway
+and ask the guests to warm; `RoomStrict` refuses instead), so one knob governs every consumer of the
+spawner rather than the ambush director and the spawn menu disagreeing about the same room. DR's own
+`[Species] WarmOnly` keeps its original meaning and still governs only the local half.
+
+*Built 2026-08-20, not live-verified — see `docs/guest-mirror-harvest-testplan.md` (GM10–GM19).*
+
 ## Known issues
 
 - **A Wolfgang can turn up on the wrong side.** The Wolfgang family's allegiance is driven by your
