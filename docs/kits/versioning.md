@@ -81,9 +81,11 @@ Thunderstore install it is log-only, because kits from different release trains 
   existing method *is* a re-signing (the old arity vanishes from the IL) — add an overload instead.
 - **A genuine break moves `COMPAT_SINCE`** — the release train does this for you when it detects
   removed surface, and it refuses to publish a kit alone when an in-plan consumer would be stranded.
-- **Version numbers are in five places** and `scripts/check-versions.sh` keeps them equal:
-  `manifest.json`, `thunderstore.toml`, `Plugin.cs` `VERSION`, the csproj `<Version>`, and — derived
-  automatically by `Directory.Build.targets` — the matching `core/<Kit>.Core` assembly. Assembly
+- **`scripts/check-versions.sh` keeps FOUR hand-written version numbers equal**: `manifest.json`
+  (the source of truth — `package-release.sh` names the zip from it), `thunderstore.toml`
+  `versionNumber`, `Plugin.cs` `VERSION`, and the csproj `<Version>`. A fifth copy exists but is NOT
+  checked because it cannot drift: the matching `core/<Kit>.Core` assembly derives its version
+  automatically from the kit's in `Directory.Build.targets`. Assembly
   identity (`AssemblyVersion`) is frozen at `MAJOR.0.0.0`; the real number lives in
   `FileVersion`/`InformationalVersion`, the `[BepInPlugin]` attribute and the package.
 - `Kits.Integration.Tests` asserts every `[BepInDependency]` carries its `VERSION` floor and has its
