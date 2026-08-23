@@ -210,6 +210,8 @@ var store = ch.RegisterStore("proxy", new StoreOptions {
     ClearOnOwnerLost = true,                    // OnPeerLost fast path + a paced backstop for
     OwnerMissingSeconds = 45f,                  //  exotic failures (owner replica unresolvable)
     ClearOnRoomChange = true,                   // the room watch lives in the kit, per store
+                                                //  REQUIRED for PeerOwned (see below); the ctor
+                                                //  throws if you turn it off there
     Verbs = new StoreVerbs { Announce = "mymod.announce", Release = "mymod.release" },
 });
 // Owner side — push your CURRENT state every tick; the kit latches (fresh /
@@ -252,6 +254,14 @@ in place and stay unit-tested, but seeing them idle is the design working. Row k
 store therefore read as `actorId` / `actorId:slot` — read them back with the actor id, not your uid.
 Outside a room the local actor is `0`, so `Announce` refuses (no send, no local row) until the join
 completes; your next push carries it.
+
+*`ClearOnRoomChange` is mandatory here (0.2.5).* Actor numbers are **room-scoped**: actor 3 in the
+next room is a different person, or nobody. A `PeerOwned` store whose key is derived from the sender
+actor therefore rots the instant it carries rows across a room change — and the presence reap cannot
+catch it, because that sweep compares actor numbers with no room identity of its own. The
+constructor **refuses** `PeerOwned` with `ClearOnRoomChange = false`, the same shape as the
+`ResolveUidOwner` refusal above. (Both shipped consumers already set it; the guard is there so the
+next one can't quietly not.)
 
 *One logical record per slot.* Because the table key is the **sender**, every consumer key a `PeerOwned` store announces at the same slot lands on the **same row** — two different uids at slot 0 would overwrite each other on every refresh. Use one constant key per store (the warm mirror uses `"warm"`), and the slot when you genuinely need several rows per peer.
 

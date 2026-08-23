@@ -326,10 +326,20 @@ one missed flourish. The master drops a guest report whose uid resolves no repli
 `no-replica` (mid-join race) and a failed binding rung as `not-owner`.
 
 *Self-play constraint for Resolver authors:* the one-shot runs vanilla binding on the target
-player's own Character (`BodyFx.cs` `PlayOneShot`, the `selfPlay` branch) with **no** T3 strip, pin
-or rebind — so a recipe whose prefab carries `VFXParticlesOnVisuals` (reparents a child onto the
+player's own Character (`BodyFx.cs` `PlayOneShot`, the `selfPlay` branch) with **no** T3 strip and
+**no** pin — so a recipe whose prefab carries `VFXParticlesOnVisuals` (reparents a child onto the
 character skeleton, where it outlives the timed Destroy) or `VFXPositionOnChar` must not be
-blessed by the Resolver. The only blessed prefab today, `VFXCounter` (VFXSystem +
+blessed by the Resolver.
+
+*Unarmed / unresolvable weapon slot (0.4.11):* self-play lets vanilla bind first, but
+`VFXParticlesOnWeapon.ChooseRenderer` returns **null** with no weapon equipped and
+`RefreshVFXOnChar` only re-stamps the ShapeModule for a SkinnedMeshRenderer or MeshRenderer — so a
+mesh-shape emitter is left with no renderer and emits **nothing**. (The older "an unarmed player
+gets the prefab's default shape at the clone root" note was wrong.) After Play, `PlayOneShot`
+therefore rebinds **only** the emitters still holding a null target renderer onto the player's own
+body mesh; a resolved weapon renderer is never touched. `BodyFx.DescribeBindings` reports what each
+emitter actually bound to (`<type>@<node> -> renderer=<name|NONE>`) on the `[PLAYERFX] played …`
+line. The only blessed prefab today, `VFXCounter` (VFXSystem +
 VFXParticlesOnWeapon children), is clean.
 
 ### Adding a replicated cosmetic: transient vs persistent
