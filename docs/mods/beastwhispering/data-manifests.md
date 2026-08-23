@@ -34,7 +34,7 @@ Free-text `notes` may sit alongside; they are documentation only and are never c
 | `tamingFood` | The chow + recipe scroll you cook to tame it, and the recipe's ingredients | `TamingFoods.json` |
 | `comfort` | Temperature comfort band (`min`/`max` steps) | `SpeciesComfort.txt` |
 | `buffs` | Passive player buffs the bond grants (stat + percent per loyalty level) | `SpeciesBuffs.txt` |
-| `signatureAttack` | The Hunt as One special: trigger, windup, status, damage mult, cooldown, build-up, `Kind` (Melee / Ranged / Brace), and an optional `taunt` (its minimum and maximum aggro-pin seconds, lerped over loyalty) | `SpeciesSpecialAttacks.txt` |
+| `signatureAttack` | The Hunt as One special: trigger, windup, status, damage mult, cooldown, build-up, `Kind` (Melee / Ranged / Brace), and an optional `taunt` — `minSeconds`/`maxSeconds` (the aggro-pin window, lerped over loyalty) plus `chancePercent`/`chancePerStack` for a pin earned through Hunt-as-One **Synergy** (the roll at one stack, and how much each further stack adds). Both chances absent = the pin is stance-earned only; the whole window absent = no taunt at all | `SpeciesSpecialAttacks.txt` |
 | `forTheKill` | The For the Kill execute debuff, plus an optional `killBuff` | `ForTheKill.json` |
 | `foodHexes` | Which fed foods add which hex build-up on Hunt as One | `FoodHexes.json` |
 | `gifts` | The Gift skill's drop table (default drop + loyalty-lerped drops + nothing-chance) | `PetGifts.json` |
@@ -47,9 +47,44 @@ Free-text `notes` may sit alongside; they are documentation only and are never c
 | `flourish` | The animation the creature plays when a spell you cast reaches it. Either a plain trigger string (`"Flourish"`) or `{ "default": …, "perSpell": { "ward": … } }` for a creature whose animation differs by spell. **Empty by default — a creature with no entry animates nothing**, which is the correct starting state: trigger names are per-creature facts that can only be read off a live body with the `animdump` dev command, never guessed. (The *visual* half of a spell belongs to the spell, not the creature, and lives in `PetSpellFx.json`.) | `SpeciesFlourish.txt` |
 | `donorScenes` / `donorObject` | Which scenes the creature's body can be harvested from | `DonorScenes.txt` ([DonorKit](../../kits/donorkit.md)) |
 | `yaw` | Rig-facing correction if the model walks sideways/backward | `SpeciesYawOffsets.txt` |
+| `carry` | `{ "weight": … }` — how much item weight this species' pet inventory holds. No entry = the `[Systems] PetCarryWeightDefault` backfill | `SpeciesCarry.txt` |
+| `slopeTilt` | `true`/`false` — does the body pitch and roll to match the ground? An anatomy fact: quadrupeds tilt, bipeds stay upright. No entry = upright | `SpeciesSlopeTilt.txt` |
+| `combatStyle` | `"chase"` or `"opposite"` — does the pet chase its target, or station **across** the enemy from you so your arrow corridor stays open? No entry = chase | `SpeciesCombatStyle.txt` |
+| `synergyResist` | `{ "multiplier": … }` — this species' term in the all-resistances bonus its body earns while Synergy stacks are up (loyalty sets the ceiling, stacks approach it). No entry = the `[Synergy] ResistMultiplierDefault` backfill | `SpeciesSynergyResist.txt` |
+| `synergyBonus` | Per-Synergy-stack payoff for the **player** — a list of `{ "stat": …, "perStack": … }` | `SynergyBonus.json` |
 
 A few tables are **global**, not per-creature: the consumable blankets (`data/blankets.json`) and the
 weather-resist foods that grant temperature relief.
+
+### Overriding a shipped table without a rebuild
+
+The one-value-per-species tables — `SpeciesCombatStyle.txt`, `SpeciesSynergyResist.txt`,
+`SpeciesSlopeTilt.txt`, `SpeciesCarry.txt`, `SpeciesYawOffsets.txt` — ship embedded in the DLL as the
+built-in defaults, and each accepts a **same-format override file dropped next to the configs**:
+
+```
+BepInEx/config/SpeciesCombatStyle.txt
+```
+
+```ini
+# one row per species; an exact key beats the longest name match
+Pearlbird=opposite
+Armored Hyena=chase
+```
+
+A species named in the override file takes that value; a species named in neither layer takes the
+built-in default for that axis. The override is re-read live by a dev verb, so retuning costs no
+rebuild and no relaunch:
+
+| Table | Override file | Reload verb |
+|---|---|---|
+| `SpeciesCombatStyle.txt` | `BepInEx/config/SpeciesCombatStyle.txt` | `reloadcombatstyle` |
+| `SpeciesSynergyResist.txt` | `BepInEx/config/SpeciesSynergyResist.txt` | `reloadsynergyresist` |
+| `SpeciesSlopeTilt.txt` | `BepInEx/config/SpeciesSlopeTilt.txt` | `reloadslopetilt` |
+
+(`SpeciesSynergyResist.txt` has a second override layer above it — the `[Pet]
+SpeciesSynergyResistMultipliers` config string, which wins per key. See the
+[config reference](./config-reference.md).)
 
 ## Item, status & scene names — not raw IDs
 
