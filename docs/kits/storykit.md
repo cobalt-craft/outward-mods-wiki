@@ -251,12 +251,12 @@ NpcRegistry.Register(new NpcSpec
 | `BackpackName` | Equipped at spawn; resolved against the live item registry by display name, then prefab name. Unresolvable = refused. |
 | `RandomVisuals` | Gender, skin, head, hair style and hair colour are rolled (bounds from the game's own `CharacterVisualsPresets`) instead of SideLoader's all-zero default. Seeded from the spec id + a per-session salt: a respawn in the same session looks the same. |
 | `OutfitPool` | A list of `OutfitSpec { ChestName, HelmetName, BootsName }`; one is rolled per spawn on the same seed. Each piece is resolved like `BackpackName`; an unresolvable piece **warns and is skipped** (the spawn proceeds), a resolved one overrides the matching `ChestId`/`HelmetId`/`BootsId`. Empty entries warn offline. |
-| `Merchant` | Grafts the game's `Merchant` onto the body: `StockTableNameContains` (a live merchant's table, else a loaded `Dropable` asset), `FallbackItemNames` (generated into the pouch when no table / empty roll), `RefreshRateGameHours`, `NonSavable` (default true), `Buyer`/`Seller`. |
+| `Merchant` | Grafts the game's `Merchant` onto the body: `StockTableNameContains` (a live merchant's table, else a loaded `Dropable` asset), `FallbackItemNames` (generated into the pouch when no table / empty roll), `RefreshRateGameHours`, `NonSavable` (default true), `Buyer`/`Seller`. **Requires `Mobile`** — the graft rides the mobile rig, so a static merchant is refused offline rather than spawning shopless. |
 | `Choice.Shop(id, text)` | A root-menu row that opens the shop through a real vanilla `ShopDialogueAction`. Requires `Merchant` (error otherwise). The talk prompt is hidden while the AI is in a combat/suspicious state. |
 
-Offline rules (`SpecValidation`): `Combat` without `Mobile` and a `Shop` row without `Merchant` are
-**errors**; `Ai` without `Mobile`, a `Merchant` with no `Shop` row and a `Shop` row inside a submenu
-are warnings. Specs carry no config of their own — the kit's only settings are in
+Offline rules (`SpecValidation`): `Combat` without `Mobile`, `Merchant` without `Mobile` and a
+`Shop` row without `Merchant` are **errors**; `Ai` without `Mobile`, a `Merchant` with no `Shop` row
+and a `Shop` row inside a submenu are warnings. Specs carry no config of their own — the kit's only settings are in
 `BepInEx/config/cobalt.storykit.cfg` (see *Settings*); per-NPC numbers belong in the consuming mod's
 config.
 
