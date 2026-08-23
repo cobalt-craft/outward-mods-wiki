@@ -102,6 +102,7 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `fletchdump` | Feather-fletch registration & held-ammo state. |
 | `buffdump` / `bufffooddump` | Bond buffs / buff-food state. |
 | `synergydump` / `ftkdump` / `killfavordump` | Synergy, For the Kill, kill-favor state. |
+| `ftkleap` / `ftkstomp` | Force For the Kill's landing flourish with no cast and no damage: `ftkleap` plays the melee arcs (player + pet) at a point ~4m ahead; `ftkstomp` plays the bow-mode landing at your own feet. Both broadcast like a real cast and honour `[ForTheKill] EnableLeap`. |
 | `boltdump` / `firebolt` | Ranged-special rig census / headless test fire. |
 | `bracedump` / `brace` / `tauntdump` / `taunt [name]` | Brace stance state (including its aggro-pin) / force-enter / taunt pipeline state / force a short taunt onto the nearest (or named) enemy. |
 | `hitfxdump` | What the equipped weapon would proc on a Hunt as One / For the Kill strike. |

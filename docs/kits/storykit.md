@@ -121,7 +121,7 @@ load-order dependency:
 
 ```csharp
 [BepInPlugin(GUID, NAME, VERSION)]
-[BepInDependency(StoryKit.Plugin.GUID, BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency(StoryKit.Plugin.GUID, StoryKit.Plugin.VERSION)]   // VERSION = the min-version floor, see kits/versioning.md
 ```
 
 SideLoader must be present at runtime, but there is **no `[BepInDependency]` on SideLoader** —
@@ -212,6 +212,12 @@ NpcRegistry.Register(new NpcSpec
     LookFollowEnabled = false,                // the agent owns yaw on a mobile body
     Faction = "Merchants",                    // Character.Factions by NAME (locale-proof)
     BackpackName = "Mefino's Trade Backpack", // item DISPLAY name; ' and ’ both match
+    RandomVisuals = true,                     // rolled face/hair, stable per spec id within a session
+    OutfitPool = new List<OutfitSpec>         // one outfit rolled per spawn, pieces by DISPLAY name
+    {
+        new OutfitSpec("Adventurer Armor", "Adventurer Hat", "Adventurer Boots"),
+        new OutfitSpec("Padded Armor", null, "Padded Boots"),
+    },
     Ai = new AiSpec { WanderSpeed = 1.1f, CanWanderFar = false, ChanceToAttack = 40f },
     Combat = new CombatSpec
     {
@@ -243,6 +249,8 @@ NpcRegistry.Register(new NpcSpec
 | `Combat` | `Health`, `Protection`, `DamageResists[6]` (percent), `DamageBonusMult` (1 = unchanged), `TargetableFactions` (names; null = the faction's default). Requires `Mobile`. |
 | `Faction` | `Character.Factions` name. Empty = `NONE` (as before). Unknown name = refused. |
 | `BackpackName` | Equipped at spawn; resolved against the live item registry by display name, then prefab name. Unresolvable = refused. |
+| `RandomVisuals` | Gender, skin, head, hair style and hair colour are rolled (bounds from the game's own `CharacterVisualsPresets`) instead of SideLoader's all-zero default. Seeded from the spec id + a per-session salt: a respawn in the same session looks the same. |
+| `OutfitPool` | A list of `OutfitSpec { ChestName, HelmetName, BootsName }`; one is rolled per spawn on the same seed. Each piece is resolved like `BackpackName`; an unresolvable piece **warns and is skipped** (the spawn proceeds), a resolved one overrides the matching `ChestId`/`HelmetId`/`BootsId`. Empty entries warn offline. |
 | `Merchant` | Grafts the game's `Merchant` onto the body: `StockTableNameContains` (a live merchant's table, else a loaded `Dropable` asset), `FallbackItemNames` (generated into the pouch when no table / empty roll), `RefreshRateGameHours`, `NonSavable` (default true), `Buyer`/`Seller`. |
 | `Choice.Shop(id, text)` | A root-menu row that opens the shop through a real vanilla `ShopDialogueAction`. Requires `Merchant` (error otherwise). The talk prompt is hidden while the AI is in a combat/suspicious state. |
 
@@ -263,6 +271,7 @@ config.
 | `NpcRegistry.SpawnAt(id, pos, rotY)` | Spawn at an explicit position/yaw. |
 | `NpcRegistry.SpawnAtAndGet(id, pos, rotY)` → `Character` | Same, handing back the body (or the already-live one); null = not spawned, reason logged. |
 | `NpcRegistry.TryGetLive(id, out Character)` / `TryGetMerchant(id, out Merchant)` | The live body / its grafted vanilla `Merchant`. |
+| `NpcRegistry.IsInDialogue(id)` → `bool` | True while the NPC is talking or trading (dialogue tree running, listed in the game's conversation roster, or `Merchant.Buyer` set). A consumer that walks the NPC polls this to stop mid-conversation. |
 | `NpcRegistry.Rebuild(id, NpcSpec)` / `ReplaceGreetings(id, greetings)` | Swap the dialogue of a STANDING NPC (greeting variants, new rows) without a despawn. Only the dialogue half is honoured live — body shape (Mobile/Combat/Merchant/Backpack/Faction) is fixed by the template. |
 | `NpcRegistry.Despawn(id)` / `Respawn(id)` | Remove, or remove-and-respawn at the (possibly retuned) placement. |
 | `NpcRegistry.Unregister(id)` → `bool` | Forget a spec: despawn the body if live, drop the SideLoader template (the UID can be registered again) and remove the entry. For per-spawn specs (DangerousRoads' road merchant). True = a body was live. |
@@ -272,7 +281,8 @@ config.
 
 Core data types: `NpcSpec`, `Placement`, `TrainerSpec`, `DialogueSpec`, `Choice` (with
 `Choice.Train` / `Choice.Reply` / `Choice.Menu` / `Choice.Shop` factories), `AiSpec`, `CombatSpec`,
-`MerchantSpec`, `SkillTreeDef`, `SlotDef`, `SpecIssue`.
+`MerchantSpec`, `OutfitSpec`, `SkillTreeDef`, `SlotDef`, `SpecIssue`. Pure helpers: `OutfitRoll.Pick(pool, roll01)`,
+`VisualRoll.Seed(id, salt)` / `Roll(seed, bounds)` / `Roll01(seed, stream)`.
 
 ### Nested topic menus (`Choice.Menu`)
 

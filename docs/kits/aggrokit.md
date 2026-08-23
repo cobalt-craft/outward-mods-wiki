@@ -141,6 +141,7 @@ AggroKit uses the command channel **only** — it deliberately does not adopt Fo
 | `undetectable` / `detectable` | Toggle the player's detectability to 0 / 1. |
 | `shieldme` / `unshieldme` | Override so nobody may target the player / clear it. |
 | `clearoverrides` | Clear all targetability overrides. |
+| `protect <name\|nearest>` / `unprotect` | Make an AI un-attackable by everyone — AI acquisition, melee, lock-on, skill sub-effects — and release the locks already on it / undo. |
 | `stealthme [off]` | Veto AI detection of the player (true stealth). |
 | `decoy <name>\|off` | Redirect detections of the player onto another AI. |
 | `noaggro [off]` | The player's hits generate no aggro. |
@@ -281,8 +282,39 @@ TargetableOverrides.ClearAll();              // the big hammer: everything, ever
 ```
 
 A `true` override only makes a pair *attackable* — it does not make the detection scan find them.
-Pair it with `AggroTools.ForceTarget` to start the fight. Mind the ranged-damage limitation above:
-this gate governs lock-on and melee eligibility, not projectiles.
+Pair it with `AggroTools.ForceTarget` to start the fight.
+
+**Resolution order** is pair > for-all > vanilla: a `SetForAll(target, false)` with a
+`Set(bandit, target, true)` on top means *only* that bandit may attack `target`.
+
+**What a `false` override stops** (2026-08-22): lock-on acquisition, melee weapon hits, physic
+projectiles, `CheckIfCombatWorthy`, AI combat-state retention (the `IsTargetable(Character)` postfix),
+**AI acquisition** — `AICEnemyDetection.Detected` / `CharHurt` and the squad's `SetPreferredTarget`
+refuse a blocked target, so a protected character is never locked in the first place instead of
+flapping in and out of combat — skill/status sub-effects (`SubEffect.IsTargetable`), and
+`AggroTools.ForceTarget`. Still open: `RaycastProjectile` volleys with `HitEnemiesOnly`, which are
+faction-keyed.
+
+#### Protecting a character
+
+The convenience for the common case — "nobody may attack this NPC" (a quest giver, a road
+merchant the player's pet would otherwise bite):
+
+```csharp
+const string MyOwner = "mymod";
+AggroTools.Protect(merchant, MyOwner);                        // for-all false + release every AI lock on him
+TargetableOverrides.Set(bandit, merchant, true, MyOwner);     // the ambushers may still attack (pair wins)
+bool blocked = AggroTools.IsProtected(petAnchor, merchant);   // the read CompanionKit's anchor/pet picker use
+AggroTools.Unprotect(merchant, MyOwner);                      // owner-checked: another owner's shield stays
+TargetableOverrides.ClearOwnedBy(MyOwner);                    // and your pair re-allows
+```
+
+Consumer-owned protection **survives scene loads** (only the dev-verb owner is swept) — call
+`Unprotect` when the character despawns. `AggroTools.ReleaseLocksOn(target)` is the lock sweep on
+its own. CompanionKit honours the gate at its two choke points (the anchor's upkeep releases a held
+lock on a protected character and never unifies onto one; the pet's target ladder refuses one as a
+commanded / anchor-defend / player-engaged candidate), so a Beastwhispering pet will not fight a
+protected NPC.
 
 ### Detection-side controls and observation
 

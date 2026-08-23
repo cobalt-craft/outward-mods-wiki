@@ -97,8 +97,51 @@ one of this region's exits, where he leaves the map. Catch him and talk: you can
 friendly, hard to kill and nearly harmless — and if something attacks him and you drive it off, he
 says so the next time you talk. He is never saved and carries no loot.
 
+**He stops for you.** Walk up to him and he halts and turns to face you so you can talk; once you
+step away he waits a few seconds and walks on (`[Merchant] GreetRadius`, `GreetResumeSeconds`).
+
+**You cannot hurt him.** Your weapons, lock-on, your pet and any ally on your side ignore him
+(`[Merchant] Protected`) — so a pet that picks fights will not drag him into one. Bandits can.
+
+**Bandits.** Most merchants (`RaidChance`, default 75%) get raided: as you come within
+`RaidTriggerMeters` of him — or after `RaidDelaySeconds` if you never do — two or three bandits from
+this region appear nearby and go for him ("Bandits are closing on the merchant!"). He is tough
+enough to last until you get there; drive them off and his greeting changes.
+
+```ini
+[Merchant]
+WalkSpeed = 0.5
+GreetRadius = 4
+GreetResumeSeconds = 3
+Protected = true
+RaidChance = 0.75
+RaidMin = 2
+RaidMax = 3
+RaidTriggerMeters = 90
+RaidDelaySeconds = 120
+```
+
 `[Events] MerchantWeight` is how often he comes up relative to an ambush (`0` = never);
 `MerchantCooldownSeconds` is the shortest gap between two merchants. Only one is on the road at a time.
+
+**Finding him.** Besides the toast's bearing, the HUD compass shows a **green dot** for the merchant
+from the moment he appears until he leaves — at any distance, slightly larger than the red hostile
+blips, so it reads as a place to walk toward rather than a threat. `[Compass] ShowMerchantBlip`
+turns it off and `MerchantBlipColor` recolours it (an unparseable colour falls back to green, never
+to hostile red):
+
+```ini
+[Compass]
+ShowMerchantBlip = true
+MerchantBlipColor = #34C759
+```
+
+In co-op you may see another compass marker: that one is the base game's own other-player element,
+pointing at your partner, and is not drawn by DangerousRoads.
+
+If the road is blocked on the way — a roadside point the navmesh cannot reach — he skips past it
+and keeps walking rather than standing there; only a stall at the very gate, or several in a row,
+ends the walk early (he despawns, and the log says why).
 
 ## Known issues
 
@@ -190,11 +233,18 @@ no config file-watcher of its own, so an edit alone does nothing until then).
 | `[Merchant]` | `Health` | `900` | The merchant's max health. Applies to the next merchant. |
 | | `Protection` | `20` | Flat damage protection. Next merchant. |
 | | `DamageMult` | `0.25` | Multiplier on the damage he deals (`1` = unchanged). Next merchant. |
-| | `WalkSpeed` | `1.1` | His walking speed modifier. Live. |
+| | `WalkSpeed` | `0.5` | His walking speed: a multiplier on the body's run speed (vanilla wanderers 0.3, `1.1` is a jog). Live. |
 | | `ExitRadius` | `6` | How close to the exit counts as arrived (he despawns there). Live. |
 | | `StuckSeconds` | `90` | Despawn after this long with no progress outside combat (`0` = never). Live. |
 | | `MinRouteMeters` | `150` | Prefer an exit at least this far from where he appears. Next merchant. |
 | | `DefendsHimself` | `true` | Fights back against bandits (never you). `false` = fully passive. Next merchant. |
+| | `GreetRadius` | `4` | Stops and faces a player this close (metres); `0` = never stops (dialogue still holds him). Live. |
+| | `GreetResumeSeconds` | `3` | Walks on this long after the last player leaves. Live. |
+| | `Protected` | `true` | The player side (weapons, lock-on, pets, allies) cannot hurt or target him; bandits can. Next merchant. |
+| | `RaidChance` | `0.75` | Chance (0–1) that bandits raid him during the walk. Next merchant. |
+| | `RaidMin` / `RaidMax` | `2` / `3` | How many raiders; each counts against `[Wave] MaxOwnActive`. Next merchant. |
+| | `RaidTriggerMeters` | `90` | The raid springs when a player is this close (`0` = by delay only). Live. |
+| | `RaidDelaySeconds` | `120` | The raid springs this long after his spawn regardless (`0` = by proximity only). Live. |
 | `[Placement]` | `MinDistanceMeters` | `40` | Closest a creature may appear. |
 | | `MaxDistanceMeters` | `200` | Farthest a creature may appear. |
 | | `PathLengthRatioMax` | `1.8` | Reject a spot whose walking distance exceeds this multiple of its straight-line distance. |
@@ -214,6 +264,8 @@ no config file-watcher of its own, so an edit alone does nothing until then).
 | `[Compass]` | `ShowBlips` | `true` | Mark this mod's live spawns on the HUD compass. |
 | | `BlipRangeMeters` | `250` | Stop marking a creature past this distance. |
 | | `BlipColor` | `#FF3B30` | Blip colour, `#RRGGBB` or `#RRGGBBAA`. |
+| | `ShowMerchantBlip` | `true` | The wandering merchant's green compass dot, any distance, independent of `ShowBlips`. Live. |
+| | `MerchantBlipColor` | `#34C759` | The merchant dot's colour; drawn 1.4× a hostile blip. Unparseable = green. Live. |
 | `[Diag]` | `LogVerbose` | `false` | One log line per placement candidate with its full verdict chain. |
 | | `LedgerAutoDumpSeconds` | `300` | Auto-print the anchor-source measurement table this often (`0` = never). |
 | `[Keys]` | `ForceWaveKey` | *(unbound)* | Force a wave immediately. Ships unbound on purpose — keys are a cross-mod resource. |
@@ -242,8 +294,9 @@ MerchantCooldownSeconds = 600
 
 [Merchant]
 Health = 900
-WalkSpeed = 1.1
+WalkSpeed = 0.5
 StuckSeconds = 90
+RaidChance = 0.75
 
 [Placement]
 MinDistanceMeters = 40
@@ -257,6 +310,8 @@ ShowToast = true
 
 [Compass]
 ShowBlips = true
+ShowMerchantBlip = true
+MerchantBlipColor = #34C759
 ```
 
 ## Commands
@@ -276,8 +331,9 @@ lists them all.
 | `roadsprobe [x y z]` | Run the verification pipeline on one point and print every stage. No arguments = where you stand. |
 | `roadsmark` | Pick the best anchor right now, log it and draw a marker ray. Spawns nothing. |
 | `roadsnow [count] [species…]` | Force a wave immediately, through the real pipeline. |
-| `roadsdeck [draw\|<id>]` | The event deck: cards, live weights, cooldowns, last draw. `draw` forces a draw; `<id>` (`ambush`, `merchant`) forces that card. |
-| `roadsmerchant [status\|spawn\|despawn\|rescue\|goto <exit>]` | The wandering merchant: where he is / put one on the road now / remove him / fake the rescue so the thanks greeting shows / re-route him to an exit index from `roadsexits`. |
+| `roadsdeck [draw\|<id> [key=value…]]` | The event deck: cards, live weights, cooldowns, last draw. `draw` forces a draw; `<id>` (`ambush`, `merchant`) forces that card, with the same optional keys as `roadscard`. |
+| `roadscard [id] [key=value…]` | Force one card with optional overrides; every key is optional, so `roadscard merchant` is a plain draw of the merchant and `roadscard` alone is a real deck draw. Merchant: `exit=<n from roadsexits>` `dest=<exit-name substring>` `health=` `protection=` `damage=<mult>` `speed=` `defends=true\|false` `at=here` (spawn in front of you) `name=` `raid=0\|1` (forbid/force the bandit raid) `raiders=<n>` `raidspecies=<key>` `outfit=<n>` (pin an outfit from the pool) `protected=true\|false`. Ambush: `count=` `species=`. An unknown key is warned and ignored; an `exit`/`dest` that names nothing is refused. |
+| `roadsmerchant [status\|spawn [key=value…]\|despawn\|rescue\|raid\|goto <exit>]` | The wandering merchant: where he is (walk, greet pause, raid state) / put one on the road now (same keys as `roadscard merchant`) / remove him / fake the rescue so the thanks greeting shows / spring the bandit raid now / re-route him to an exit index from `roadsexits`. |
 | `roadsexits` | Census of this scene's zone exits: index, destination, distance and bearing from you. |
 | `roadsstock` | Which live merchant in the scene carries the caravan stock table the road merchant copies. |
 | `roadsarm` | Arm the director so the next wave is due immediately. |
@@ -285,7 +341,7 @@ lists them all.
 | `roadswarm <species>` | Queue a species for background prewarm now. |
 | `roadssweep [kill]` | Despawn every creature this mod spawned. `kill` kills them instead (death animation and loot). The panic button. |
 | `roadsui [depth]` | Dump the live HUD hierarchy and report whether a compass was found. |
-| `roadsblips` | Compass blip status: compass found, HUDs hooked, blips live. |
+| `roadsblips` | Compass blip status: compass found, HUDs hooked, blips live (hostile and merchant counted separately). |
 | `selftest` | Run the built-in checks and log a pass/fail report. |
 
 The shared [ForgeKit](../kits/forgekit.md) command pack answers on this channel too, so `reloadcfg`,

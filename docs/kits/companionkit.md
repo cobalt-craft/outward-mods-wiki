@@ -114,6 +114,45 @@ after a generous grace window.
 | `OrphanBodyGraceSeconds` | `90` | Never judge a body younger than this (in-flight builds legitimately go unowned for a few seconds). |
 | `OrphanBodyCondemnSeconds` | `20` | How long an orphan is warned about before it is destroyed. |
 
+### Combat style — `Chase` vs `Opposite` (host-configured)
+
+Every companion body carries a `CombatStyle`. `Chase` (the default) closes to melee on its target.
+`Opposite` stations the body on the **far side** of the target — so the enemy ends up between the
+owner and the companion — and plants there; Beastwhispering uses it for the Pearlbird so an archer
+keeps a clear line of fire. A body keeps its station while it is out of the line between the
+owner and the enemy (seen from the owner) or the enemy has barely moved, and once the fight has
+settled on the pet only the line test applies; if the enemy runs off toward the owner (the *far*
+rule) it re-stations regardless. Re-stations are rate-limited, and after `StationMaxRestations`
+in one fight the body simply chases for the rest of it, so it can never dance around a mob.
+
+The style is chosen by the host mod per species. The tuning knobs are the host's too — for
+Beastwhispering they live in `BepInEx/config/cobalt.beastwhispering.cfg`, section `[Combat]`:
+
+| Key | Default | Effect |
+|---|---|---|
+| `StationRingFraction` | `0.6` | Where the station sits: this fraction of the pet's attack range past the enemy, on the owner→enemy line. |
+| `StationLineAngleDeg` | `20` | Seen from the owner, the pet counts as "in the corridor" (between owner and enemy) when the enemy↔pet angle is under this — the station is then re-picked. |
+| `StationRestationMeters` | `3` | While the pet is in the corridor, the enemy must also have moved at least this far since the station was set (ignored once the fight has settled on the pet). |
+| `StationRestationSeconds` | `2` | Minimum seconds between re-stations. |
+| `StationArriveMeters` | `0.8` | Within this distance of the station the body counts as planted; a re-pick this close to where the pet already stands is skipped. |
+| `StationMaxRestations` | `6` | Re-stations allowed per engagement; past it the body chases (logged once). |
+| `StationFarMeters` | `3` | An enemy farther than attack range + this from the pet forces a re-station regardless of the line test. |
+
+```ini
+[Combat]
+StationRingFraction = 0.6
+StationLineAngleDeg = 20
+StationRestationMeters = 3
+StationRestationSeconds = 2
+StationArriveMeters = 0.8
+StationMaxRestations = 6
+StationFarMeters = 3
+```
+
+(These are the defaults.) The log tag is `[STATION]` — `set: why=first` on the first station,
+`restation #n why=…` on each later one, `planted` on arrival, `cap fallback` once past the cap;
+Beastwhispering's `stationdump` prints the live state.
+
 ### Example configuration
 
 `BepInEx/config/cobalt.companionkit.cfg` — created on first launch. Excerpt:
@@ -173,7 +212,7 @@ Reference both DLLs from the kit's own folders — never copy them into yours:
 
 ```csharp
 [BepInPlugin(GUID, NAME, VERSION)]
-[BepInDependency(CompanionKit.Plugin.GUID, BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency(CompanionKit.Plugin.GUID, CompanionKit.Plugin.VERSION)]   // VERSION = the min-version floor, see kits/versioning.md
 public class Plugin : BaseUnityPlugin
 {
     CompanionHost _host;
@@ -273,6 +312,90 @@ proxy row whose anchor lives on the master, so the guest could not see what its 
 Beastwhispering's damage-over-time auras read this mirror where the master path reads the live
 anchor. A master that does not send it leaves the guest snapshot-less rather than wrong, and the
 consumer is expected to say so out loud rather than render a guess.
+
+**Player-body cosmetic leg (`CompanionPlayerFx`, 0.4.8).** The transient-only twin of the pet
+flourish: `CompanionPlayerFx.Flourish(ownerUid, spellKey)` plays a one-shot FX on the owning
+*player's* Character — on every machine, since player replicas exist everywhere — and rides
+`ck.playerfx.cast` (master → others) / `ck.proxy.playerfx.cast` (guest → master, authorized by the
+owner-binding rung rather than a pet row, so a petless guest can still flash). The binder is the
+target player's own Character (self-play), so a weapon-bound vanilla VFX binds to that player's
+equipped weapon identically on every box. The consumer installs `CompanionPlayerFx.Resolver`
+(`Func<PetFxRequest, FxRecipe>`, the same type as `CompanionPetFx.Resolver`) as the allowlist: an
+unknown key is a `no-recipe` drop, never an attach. No store, no late-join replay — a lost flash is
+one missed flourish. The master drops a guest report whose uid resolves no replica yet as
+`no-replica` (mid-join race) and a failed binding rung as `not-owner`.
+
+*Self-play constraint for Resolver authors:* the one-shot runs vanilla binding on the target
+player's own Character (`BodyFx.cs` `PlayOneShot`, the `selfPlay` branch) with **no** T3 strip, pin
+or rebind — so a recipe whose prefab carries `VFXParticlesOnVisuals` (reparents a child onto the
+character skeleton, where it outlives the timed Destroy) or `VFXPositionOnChar` must not be
+blessed by the Resolver. The only blessed prefab today, `VFXCounter` (VFXSystem +
+VFXParticlesOnWeapon children), is clean.
+
+### Adding a replicated cosmetic: transient vs persistent
+
+Every replicated visual in the kit is one of two shapes. Pick by asking one question: *if a late
+joiner missed the message, should they still see it?*
+
+| | **Transient** (a moment) | **Persistent** (a state) |
+|---|---|---|
+| Examples | cast flourish (`ck.petfx.cast`), player flash (`ck.playerfx.cast`), effigy swing (`ck.effigy.swing`) | ward glow / lantern halo (`petfx` store rows), auras (`CompanionAura`), effigy identity |
+| Lost message means | one missed animation | a desync — so it is latched, refreshed and replayed |
+| Late join | nothing to replay | flushed on the peer's scene-ready edge |
+| Kit primitive | `NetBus.RegisterFireAndForget` → `FireAndForgetChannel` | `NetBus.RegisterStore` → `ReplicatedStore` (or an existing store's row) |
+| What you write | two verb names, a payload codec, an `apply`, an authorizer | a record key + payload codec, `OnSet`/`OnCleared` handlers, a ledger of what a row *means* |
+
+**Transient — one registration.** `NetBus.RegisterFireAndForget(castVerb, proxyVerb, authorize,
+apply, enabled)` registers both halves of the relay and hands back the one send seam:
+
+```csharp
+// boot (Init)
+_cast = NetBus.RegisterFireAndForget(
+    "ck.mything.cast",               // master → Others (SenderMustBeMaster | SenderMustNotBeSelf)
+    "ck.proxy.mything.cast",         // guest → master (RunOnMasterOnly)
+    ProxyPets.AuthorizePetOwner,     // null = ok, else the drop reason (`no-row` / `wrong-sender`);
+                                     //   AuthorizePlayerOwner for a player-bound verb (`no-replica` / `not-owner`)
+    ApplyWire,                       // (uid, payload, verb, out relay) — parse, then apply on the local body
+    () => Enabled);                  // optional: every leg goes silent while false
+
+// the consumer's send
+_cast.Fire(ownerUid, MyCodec.Build(...));   // applies here; in a room, relays (master) or reports (guest)
+
+// the apply seam — parsing is yours, so the drop is counted under the leg that carried it.
+// Return the PARSE verdict: false means the master will not relay the bytes it just refused.
+// relayPayload is the canonical rebuild the master relays (null = the received bytes verbatim).
+static bool ApplyWire(string uid, string payload, string verb, out string relayPayload)
+{
+    relayPayload = null;
+    if (!MyCodec.TryParse(payload, out var thing)) { NetBus.CountDrop(verb, "unparseable"); return false; }
+    relayPayload = MyCodec.Build(thing);
+    ApplyLocal(uid, thing);          // your `no-body` / `no-recipe` / `play-failed` drops live here
+    return true;                     // a body/recipe miss is still true — the bytes were sound
+}
+```
+
+The channel owns what the three hand-written carriers used to repeat: the in-room check, the
+master-relay / guest-report fork, the `empty-identity` drop, and the rule that the owning guest's
+OWN cast coming back from the master is a *skip, not a drop* (it already played in `Fire`;
+counting it would make a healthy session read as steady loss). The decision ladder is pure
+(`NetKit.Core.FireAndForgetLadder`, covered by `tests/NetKit.Tests`), so a new carrier inherits
+tested routing and only its codec and apply are new code. `CompanionPetFx`'s cast half and
+`CompanionPlayerFx` are the two shipped users; `ck.effigy.swing` predates the helper and still
+hand-writes its ladder.
+
+**Persistent — a store row.** State goes through `NetBus.RegisterStore(name, StoreOptions)` (the
+`petfx` / `effigy` / `proxy` stores above): the store owns the announce latch, periodic refresh,
+late-join replay and room/peer teardown; you keep a ledger of what a row *means* and apply it from
+`OnSet` / `OnCleared`. The worked example is **`CompanionAura`** riding the `petfx` store: the
+consumer registers one `AuraRecipe` at boot (`CompanionAura.Register`) and then pushes the desired
+state every tick (`CompanionAura.SetActive(ownerUid, auraKey, active)`), which wraps
+`CompanionPetFx.SyncOwnedFx` — the store latches the change, a guest's pet reaches the master as a
+`ck.proxy.petfx` report and is re-announced under its owner, and a late joiner gets the row from
+the scene-ready flush. Beastwhispering's `PetDotAuraDriver` (its `DotAuras` table: one aura row per
+damage-over-time status) is that path end to end. A persistent row never needs a transient verb
+beside it, and a transient never needs a store; whichever you pick, apply through ONE seam that
+every path (owner-local, master, wire) lands in — a separate "local" code path is where the
+LanternShare guest-skip class of bug lived.
 
 **Guest net mirror.** `CompanionCombat` does not know the `ck.proxy.*` protocol:
 its target/stance mirroring and hit replay go through an injected `ICompanionNetMirror`. The

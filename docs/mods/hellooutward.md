@@ -124,7 +124,7 @@ using ForgeKit;
 namespace HelloOutward
 {
     [BepInPlugin(GUID, NAME, VERSION)]
-    [BepInDependency(ForgeKit.Plugin.GUID, BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency(ForgeKit.Plugin.GUID, ForgeKit.Plugin.VERSION)]   // VERSION = the min-version floor, see kits/versioning.md
     public class Plugin : BaseUnityPlugin
     {
         public const string GUID = "cobalt.hellooutward";   // change these when you fork

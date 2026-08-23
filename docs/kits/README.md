@@ -20,6 +20,9 @@ you install. This section is for **modders** building on them.
 | [CompanionKit](companionkit.md) | give the player a **persistent creature companion** | ForgeKit, AggroKit, NetKit, DonorKit | no |
 | [SpawnKit](spawnkit.md) | **spawn creatures** at runtime as real vanilla enemies | ForgeKit, CompanionKit, NetKit, DonorKit | no |
 
+Versions and compatibility — what happens when a mod and a kit come from different releases, and
+the one rule for installs (**one bundle, one release**): **[Kit versioning](versioning.md)**.
+
 The "Depends on" column is each kit's declared `[BepInDependency]` set. SkillKit and StoryKit both
 need **SideLoader** present at runtime to do anything, but neither declares it as a BepInEx
 dependency — they reference it at compile time and wait for its packs to load instead.

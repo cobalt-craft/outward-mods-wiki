@@ -237,6 +237,23 @@ Reference the kit and declare the dependency so BepInEx loads it first:
 output folder. The kit ships from its own `BepInEx/plugins/ForgeKit/` folder; your mod just
 references it and declares the dependency.
 
+```csharp
+[BepInDependency(ForgeKit.Plugin.GUID, ForgeKit.Plugin.VERSION)]   // VERSION = min-version floor
+public class Plugin : BaseUnityPlugin
+{
+    internal void Awake()
+    {
+        // Tell ForgeKit which kit version you were compiled against (the const inlines at YOUR build);
+        // it logs a [CONTRACT] verdict at boot and warns on screen if the install mixes builds.
+        ForgeKit.KitContract.Declare(NAME, ForgeKit.Plugin.GUID, ForgeKit.Plugin.VERSION);
+        …
+    }
+}
+```
+
+Do the same for every kit you depend on. Why, and what the `[CONTRACT]`/`[STAMP]` lines mean:
+[Kit versioning](versioning.md).
+
 ### Wire up a command channel and a verb
 
 ```csharp

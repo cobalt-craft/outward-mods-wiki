@@ -187,14 +187,25 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 |---|---|---|
 | `EnableSynergy` | `true` | Landing both halves of Hunt as One grants a stack of Synergy (+all-damage for player and pet). |
 | `PercentPerStack` | `0.5` | All-damage bonus percent per stack. |
-| `MaxStacks` | `4` | Stack cap. |
-| `DurationSeconds` | `60` | Lifespan of the stacks (a new grant refreshes all). |
+| `MaxStacks` | `8` | Stack cap. |
+| `DurationSeconds` | `300` | Lifespan of the stacks (a new grant refreshes all). |
 | `WindowSeconds` | `6` | How long after a cast the two halves may land and still count. |
 | `RequireSameTarget` | `false` | Require the player's hit to be on the pet's target to count. |
+| `AdoptPlayerArrows` | `true` | Bow parity: while a Hunt as One window is open, **any** arrow you fire can be the player half — not just the one Hunt as One force-shoots for you. Judged at impact by the same honest rules, and it carries no bonus-damage rider. |
+| `BowStacksPerGrant` | `2` | Stacks granted when the player half was an **arrow**, vs the 1 a melee half grants. Bows are the harder half to land (flight time, terrain, no second swing inside the window), so they pay double. Still clamped to `MaxStacks`. Set `1` for no bow bonus. |
 | `PlayerMeleeRangeMeters` | `3.5` | How close you must be to the pet's target for the synced melee strike to connect. |
 | `PlayerMeleeConeDegrees` | `100` | Front-cone width the target must be inside for the synced strike to connect. |
 | `PetMeleeRangeMeters` | `4.5` | How close the pet must be to its target for its melee special to connect. |
+| `FlashOnGrant` | `true` | Play the Pommel Counter success flash on **both** you and your pet on every Synergy grant or refresh — the orbit on your main-hand weapon (a default shape if you are unarmed) and a one-shot on the pet's body. Replicated in multiplayer. Purely cosmetic; the stack and bonus are unaffected. Also silent when CompanionKit `[PetFx] EnablePetFx=false`. Live via `reloadcfg`. |
 | `ObserverPatch` | `false` | Diagnostic only (not a gate): log the player's real weapon connects while a Synergy attempt is open, to compare against the judged verdict. Decided at startup — relaunch to change. |
+
+`BepInEx/config/cobalt.beastwhispering.cfg` excerpt — turning the counter flash off while keeping the buff:
+
+```ini
+[Synergy]
+EnableSynergy = true
+FlashOnGrant = false
+```
 
 ## [ForTheKill] — the Synergy spender
 
@@ -206,6 +217,28 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `DamagePerStackPercent` | `35` | Extra damage percent per stack consumed. |
 | `EnableKillFavor` | `true` | A kill by the execute grants the player a loyalty-tiered stat buff (the species' `killBuff`). |
 | `KillFavorDurationSeconds` | `300` | How long that buff lasts. |
+| `EnableLeap` | `true` | The Predator's-Leap flourish. Kill-switch for **all three** of its faces: the player's arc, the pet's arc, and the bow-mode ground stomp (below). |
+| `LeapRangeMeters` | `5.5` | Cast at a target within this range and the leaper arc-jumps to it. Beyond it (or closer than 1m) nobody hops. |
+| `LeapDurationSeconds` | `0.45` | Airtime, clamped down to the pet's strike windup so both leaps land before the hit is judged. |
+| `LeapApexMeters` | `1.5` | Height of the arc at its midpoint. |
+
+**Melee vs bow.** With a melee weapon, casting For the Kill arcs *both* the player and the pet onto
+the target, each landing with a crunch and a stone-debris crater. **With a bow the player does not
+leap at all** — the cast already draws a power shot and looses a real, damage-scaled arrow, so the
+archer holds their ground and that crater + crunch plays under *their own feet* instead, and only if
+the arrow lands an unblocked hit on an enemy. The pet still arcs either way. (With
+`[HuntAsOne] HonestHits = false` — the legacy guaranteed-hit kill-switch — no arrow is tracked, so
+bow casts keep the old leap.)
+
+`BepInEx/config/cobalt.beastwhispering.cfg`:
+
+```ini
+[ForTheKill]
+EnableLeap = true
+LeapRangeMeters = 5.5
+LeapDurationSeconds = 0.45
+LeapApexMeters = 1.5
+```
 
 ## [Brace] — the tank counterattack stance (Armored Hyena)
 

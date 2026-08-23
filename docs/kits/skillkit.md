@@ -107,7 +107,7 @@ load-order dependency:
 
 ```csharp
 [BepInPlugin(GUID, NAME, VERSION)]
-[BepInDependency(SkillKit.Plugin.GUID, BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency(SkillKit.Plugin.GUID, SkillKit.Plugin.VERSION)]   // VERSION = the min-version floor, see kits/versioning.md
 ```
 
 SideLoader must be present at runtime, but there is **no `[BepInDependency]` on SideLoader** —
