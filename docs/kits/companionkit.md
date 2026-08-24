@@ -137,6 +137,7 @@ Beastwhispering they live in `BepInEx/config/cobalt.beastwhispering.cfg`, sectio
 | `StationArriveMeters` | `0.8` | Within this distance of the station the body counts as planted; a re-pick this close to where the pet already stands is skipped. |
 | `StationMaxRestations` | `6` | Re-stations allowed per engagement; past it the body chases (logged once). |
 | `StationFarMeters` | `3` | An enemy farther than attack range + this from the pet forces a re-station regardless of the line test. |
+| `StationProgressMeters` | `1` | Converge or chase: a "the enemy left me" re-station must close at least this much ground on the new station. Two in a row that do not means the pet gives up the stance and plainly chases for the rest of that fight. |
 
 ```ini
 [Combat]
@@ -147,6 +148,7 @@ StationRestationSeconds = 2
 StationArriveMeters = 0.8
 StationMaxRestations = 6
 StationFarMeters = 3
+StationProgressMeters = 1
 ```
 
 (These are the defaults.) The log tag is `[STATION]` — `set: why=first` on the first station,
