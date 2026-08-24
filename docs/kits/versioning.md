@@ -64,7 +64,8 @@ plugin's `Awake`) ForgeKit compares each declaration with the running kit's `VER
 
 `COMPAT_SINCE` is a `public const string` on every kit with consumers: the oldest kit version a
 consumer may have been compiled against and still bind. The release train moves it forward
-automatically whenever its ABI gate sees a public member removed; additive releases leave it alone.
+automatically whenever its ABI gate sees a public member removed, re-signed, or added to a public
+interface; additive releases leave it alone.
 
 ### 3. `[STAMP]` — the zero-discipline backstop
 
@@ -79,6 +80,10 @@ Thunderstore install it is log-only, because kits from different release trains 
 - **Additive only within a major version.** New methods, new overloads, new types: fine. Never
   remove or re-sign a public member in a minor/patch release. An optional parameter added to an
   existing method *is* a re-signing (the old arity vanishes from the IL) — add an overload instead.
+- **Adding an abstract member to a shipped public interface is a BREAK, not an addition** —
+  everyone who *implements* that interface was compiled against the shorter member list, so give
+  the new member a `virtual` default on the shared base class and expect the floor to move (this is
+  what carried `CompanionKit` `COMPAT_SINCE` to `0.4.10`, where `ICompanionSettings` first grew).
 - **A genuine break moves `COMPAT_SINCE`** — the release train does this for you when it detects
   removed surface, and it refuses to publish a kit alone when an in-plan consumer would be stranded.
 - **`scripts/check-versions.sh` keeps FOUR hand-written version numbers equal**: `manifest.json`
@@ -99,7 +104,7 @@ Thunderstore install it is log-only, because kits from different release trains 
 | Boot-time report + stamp census + toast | `src/ForgeKit/KitContract.cs`, `src/ForgeKit/Plugin.cs` |
 | Call-site parity gate | `tests/Kits.Integration.Tests/KitContractParityTests.cs` |
 | Version policy (core inherits, `AssemblyVersion` frozen) | `Directory.Build.targets` |
-| Release train ABI gate + `COMPAT_SINCE` bump | `scripts/release-train.py` (`removed_signatures`, `read_compat_since`) |
+| Release train ABI gate + `COMPAT_SINCE` bump | `scripts/release-train.py` (`abi_break_signatures` = `removed_signatures` + `added_interface_signatures`, `read_compat_since`) |
 | Alpha bundles: one tester, one bundle | `scripts/release-alpha.sh --profile`, `packaging/profiles/`, `packaging/install.ps1` |
 
 ## Why not …
