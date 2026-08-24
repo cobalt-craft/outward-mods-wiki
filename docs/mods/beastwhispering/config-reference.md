@@ -219,7 +219,7 @@ FlashOnGrant = false
 | `DamagePerStackPercent` | `35` | Extra damage percent per stack consumed. |
 | `EnableKillFavor` | `true` | A kill by the execute grants the player a loyalty-tiered stat buff (the species' `killBuff`). |
 | `KillFavorDurationSeconds` | `300` | How long that buff lasts. |
-| `EnableLeap` | `true` | The Predator's-Leap flourish. Kill-switch for **all three** of its faces: the player's arc, the pet's arc, and the bow-mode ground stomp (below). |
+| `EnableLeap` | `true` | The Predator's-Leap flourish. Kill-switch for **all three** of its faces: the player's arc, the pet's arc, and the bow-mode ground stomp (below). **SENDER-SIDE in co-op:** it gates whether *your* cast produces a leap or a stomp at all, so turning it off silences everything you cast. It does **not** gate what you are shown — another player whose own `EnableLeap` is on still sends `bw.ftk.leap` / `bw.ftk.stomp`, and your machine still replays their arc and crater. A receiver-side mute is deliberately not wired (static analysis 2026-08-23 AF4-8); if you want a quiet screen in co-op, everyone in the room needs the setting off. |
 | `LeapRangeMeters` | `5.5` | Cast at a target within this range and the leaper arc-jumps to it. Beyond it (or closer than 1m) nobody hops. |
 | `LeapDurationSeconds` | `0.45` | Airtime, clamped down to the pet's strike windup so both leaps land before the hit is judged. |
 | `LeapApexMeters` | `1.5` | Height of the arc at its midpoint. |
