@@ -129,7 +129,7 @@ opt out of individually.
 | Containers | `containerdump`, `containerroll` |
 | Cheats | `cheats`, `cheatmenu`, `godmode`, `enemygod`, `needs`, `speedmult`, `timejump`, `debugfile` |
 | Resilience | `unstick` (alias `unwedge`) |
-| Config | `reloadcfg` (only when the consuming mod hands the pack its config file — see below) |
+| Config | `reloadcfg`, `set`, `cfgdump`, `cfgdrift` (only when the consuming mod hands the pack its config file — see below) |
 
 A few highlights:
 
@@ -207,6 +207,33 @@ Where a dev verb lives is decided by two rules:
   SkillKit owns custom-skill/status *authoring*, not the vanilla registries, and a SkillKit
   dependency is SideLoader-poisoned for CI-buildable consumers — see the `SkillVerbs.cs` /
   `StatusVerbs.cs` headers.
+
+### Config drift at boot (`[CFGSKEW]` and `cfgdrift`)
+
+A test session once spent an evening measuring a feature against a config key that had quietly
+drifted from the value the build ships (`[Synergy] MaxStacks` was `4` on that install and `8` in the
+defaults) — a hand edit, a live `set`, or an old `.cfg` left in place will all do it, and nothing in
+the log said so. ForgeKit now sweeps every installed mod's own config file
+(`BepInEx/config/<guid>.cfg`) on the first frame, next to the `[CONTRACT]`/`[STAMP]` boot-health
+lines, and writes **one warning line per mod whose live values differ from the shipped defaults** —
+and nothing at all when they match, so the line's presence is the whole signal:
+
+```
+[CFGSKEW] Beastwhispering: 2 of 84 entries differ from shipped defaults — Synergy.MaxStacks=4 (default 8), Diag.LogLevel=Trace (default Verbose)
+```
+
+It names the first 8 drifted keys and then says `…and N more`. To read the rest — or to check drift
+at any point in a session, after a `set` as easily as at boot — run `cfgdrift [section]` on that
+mod's command channel: the same rows, the same comparison, only the entries that differ (`cfgdump`
+still lists everything and marks the drifted ones with `*default`). Both share one helper, so they
+cannot disagree. The comparison is live-value-vs-shipped-default, not file-vs-build: a key the
+running build no longer binds is invisible here, and `[STAMP]` remains the signal for a mixed install.
+
+```
+# BepInEx/config/cobalt.beastwhispering.cfg — the drift the line above is reporting
+[Synergy]
+MaxStacks = 4          # shipped default: 8
+```
 
 ## Settings
 
