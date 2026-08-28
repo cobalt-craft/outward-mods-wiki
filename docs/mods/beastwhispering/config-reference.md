@@ -31,9 +31,10 @@ TameKey = F7
 FeedKey = F8
 
 [Systems]
-InitialLoyalty = 50
+InitialLoyalty = 55
 LoyaltyGainPercent = 5
-HungerSecondsPerDay = 1200
+HungerSecondsPerDay = 7200
+EnableItemHealing = true
 UseSpeciesStats = true
 
 [Temperature]
@@ -79,9 +80,10 @@ cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispe
 | `TameRange` | `15` | Search radius (m) to tame / re-form from. |
 | `ModelYawOffset` | `180` | Degrees the creature model is rotated from the transform's forward. Tune if a species faces sideways. |
 | `SpeciesYawOffsets` | *(empty)* | Per-species yaw overrides for rigs authored facing differently, as `Name=degrees` pairs. User-override layer over the shipped table. |
+| `SpeciesPowerScales` | *(empty)* | Per-species loyalty **power scale** overrides, as `Name=scale` pairs (exact key beats the longest substring match). The user-override layer over the shipped `SpeciesPowerScale.txt` table (every shipped species is `1`); a species no layer names takes `1`. The scale multiplies the loyalty power **steps** — `0.5` means the top tier pays what a full species gets at 3 steps. Must be finite and in (0, 1] (refused with a `[POWER]` warning, falling to `1`). See `[Loyalty]`. |
 | `FollowSpeed` | `4.5` | Pet base move speed (m/s) at full responsiveness. |
 | `MinFollowSpeed` | `4.5` | Species-stats mode: minimum follow speed so a slow species can't lose a sprinting player. Combat chases run true species speed. |
-| `LeashDistance` | `30` | Out-of-combat leash (m): further behind than this, the pet teleports to the nearest **off-screen** spot behind the camera (12.5–22.5 m back) and walks the rest in. Keep under 50 (the zone re-place distance). In combat `[Combat] CombatLeashDistance` applies. |
+| `LeashDistance` | `84` | Out-of-combat leash (m): further behind than this, the pet teleports to the nearest **off-screen** spot behind the camera (12.5–22.5 m back) and walks the rest in. Raised `30` → `42` → `84` on 2026-08-25 so it **matches `[Combat] CombatLeashDistance`** — one number in and out of combat, and the warp becomes a stuck-backstop rather than a leash you feel. This deliberately overrides the older “keep it under 50 (the zone re-place distance)” guidance: the owner-distance zone re-place rides this value up with it by design. The one backstop that does *not* follow it is the coverage-gap rescue for a pet whose goal is pinned away from you (a Stay spot, a scene spot, or a combat target left behind by an area change) — that keeps a flat 50 m floor so a stranded pet is still recovered. |
 | `CatchUpSpeed` | `8` | Catch-up ceiling (m/s): more than ~5 m behind you, a following pet ramps up to this over the next ~4 m (like the vanilla cosmetic pets) so it closes the gap on foot instead of hitting the leash. Also the follow-speed **ceiling**: captured species speeds often exceed it (a Veaber records 18 m/s) and 8 is the run-animation ceiling — faster skates. Scales with the F2 `speedmult` dev slider. `0` = the old flat, unclamped follow speed. |
 | `RestHealsPet` | `true` | Finishing a rest/sleep heals the pet in proportion to the sleep hours. |
 
@@ -97,10 +99,10 @@ cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispe
 
 | Key | Default | Effect |
 |---|---|---|
-| `InitialLoyalty` | `50` | Loyalty a freshly tamed pet starts with (0–100). |
-| `HungerSecondsPerDay` | `1200` | Game-seconds without feeding per "day" of loyalty decay. `0` or negative disables hunger and decay entirely (a footgun). |
-| `TempEscalateSeconds` | `30` | Sustained out-of-band seconds to worsen one comfort stage. |
-| `TempRecoverSeconds` | `15` | Sustained in-band seconds to recover one comfort stage. |
+| `InitialLoyalty` | `55` | Loyalty a freshly tamed pet starts with (0–250 since the 14-tier ladder; 55 = the Cautious floor). |
+| `HungerSecondsPerDay` | `7200` | Game-seconds without feeding per "day" of loyalty decay — TWO real hours (1200 before the 2026-08-25 sustenance pass). Thirst is kept symmetric. `0` or negative disables hunger and decay entirely (a footgun). |
+| `TempEscalateSeconds` | `300` | Sustained out-of-band seconds to worsen one comfort stage. Raised 30 → 300 on 2026-08-25: the SLOW RAMP is the weather lever, chosen over widening comfort bands (wide bands make pets weather-proof and strand the blanket / weather-food content). A short stop at a campfire never escalates; a long trek in a real extreme still does. Advances on real play seconds, so resting does not fast-forward it. |
+| `TempRecoverSeconds` | `10` | Sustained in-band seconds to recover one comfort stage (recovery is deliberately faster than escalation). |
 | `SpeciesDailyDecay` | `15` | Loyalty lost per day without feeding. |
 | `LoyaltyGainPercent` | `5` | Percent of every **positive** loyalty gain (feeding, kill credit, first region crossing) that actually lands — the "slow, hard-won bond" lever. Nothing is lost to rounding: the leftover fraction is banked per pet and saved with it, so twenty preferred meals still deliver the ten loyalty one unscaled meal used to. Losses are **not** scaled by this. `100` = the original fast-bonding rates. |
 | `SimTickSeconds` | `2` | How often (game-seconds) the pet systems advance. |
@@ -108,7 +110,9 @@ cross-host overlay of the keys kept uniform is `config/shared/cobalt.beastwhispe
 | `CastWatchdogClearSeconds` | `30` | Force-clear a wedged casting flag after this long. `0` = never. |
 | `FeedHealAmount` | `10` | Pet HP healed by a feed when the food's diet entry has no `heal` of its own. |
 | `EnableFoodHealthRecovery` | `true` | Feeding also starts a vanilla-style over-time Health Recovery regen (level 1–5 per food; taming chow always level 5). |
-| `SatiationFraction` | `0.25` | A pet fed within this fraction of its hunger day is fully satiated and refuses all food. `0` = never refuses. |
+| `EnableItemHealing` | `true` | Feeding your pet a **healing item** heals it, by that item's **own** vanilla heal value — Life Potion and Great Life Potion, healing mixtures and any modded potion, with no data entry anywhere. Not food, so no diet lists it: any pet takes any potion. A pet already at full health refuses **without consuming**, and so does a pet whose wound is too small for the offer (a quarter of the item's value must be able to land — a scratch never burns a Great Life Potion). Damage effects are ignored, never applied. A diet food that happens to heal is still fed as a meal (authored heal only, never both); a potion that also cures — Great Life Potion cleanses Bleeding — heals **and** cures on one consume. Forensics: the `[ITEMHEAL]` log lines. |
+| `SatiationFraction` | `0.5` | A pet fed within this fraction of its hunger day is fully satiated and refuses all food — with the 7200 s day, one hour of "not hungry" after an ordinary meal (two after a chow). `0` = never refuses. |
+| `ChowSatietyMultiplier` | `2` | How much longer a SPECIES CHOW keeps the pet fed than an ordinary meal. `2` = satiated for two hours and hungry only after four, against one and two for a normal meal. Chow-specific (keyed off the taming registry), not a per-food setting; values below `1` are ignored. Stamped on the pet at the feed and saved with it, so a reload keeps it. |
 | `EnablePassiveBuffs` | `true` | Grant the bond's passive stat buff to the player (per-species, scaled by loyalty tier). |
 | `EnableBagPerk` | `true` | Grant the bond's flat backpack-capacity gift to the player's equipped bag. |
 | `ShowPetStatusIcons` | `true` | Show the pet's hunger/bond/temperature state as indicator icons on the player HUD. |
@@ -136,7 +140,7 @@ creation — a live change applies only to the next tame/reload.
 | `EnableWeatherFoods` | `true` | Feeding a weather-resist consumable (potions, teas, water) grants the pet the player's hot/cold relief; all pets may drink water, and a **Weather Defense Potion** grants total weather immunity for its duration. |
 | `PetDeathMode` | `Permanent` | What happens when exposure drains the pet to zero: `Permanent` (dies, bond deleted), `KnockedOut` (collapses/re-forms), `Disabled` (holds at 1 HP). |
 | `SufferingDrainPerMinute` | `2` | Pet HP drained per minute (percent of max) while Suffering. |
-| `CriticalDrainPerMinute` | `6` | Pet HP drained per minute (percent of max) while Critical. |
+| `CriticalDrainPerMinute` | `4` | Pet HP drained per minute (percent of max) while Critical (eased from 6 with the 2026-08-25 pass; `SufferingDrainPerMinute` deliberately stayed at 2). |
 | `UneasyDecayMult` | `1.5` | Loyalty-decay multiplier while the pet is Uneasy. |
 | `SufferingDecayMult` | `2` | Loyalty-decay multiplier while Suffering or Critical. |
 | `BlanketRecipeDropChance` | `0.05` | Chance (0–1) that **each** blanket recipe scroll (Heating / Cooling) drops from a **world loot container** — chests (Chest, Ornate Chest, Trog Chest, Stash, Supply Cache) and the odd containers (Broken Tent, Hollowed Trunk, Junk Pile). Rolled independently per blanket, once per container when it fills. **Not** from creature kills, and not from corpse containers. `0` = craft-only. |
@@ -152,7 +156,9 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `AttackInterval` | `1.4` | Seconds between pet attacks. |
 | `AggroRange` | `12` | How far the pet will engage an enemy you're fighting. |
 | `AttackRange` | `2.6` | Melee reach for a pet attack. |
-| `CombatLeashDistance` | `40` | Leash while actively fighting, so the pet can reach enemies engaged at range. |
+| `CombatLeashDistance` | `84` | Leash while actively fighting, so the pet can reach enemies engaged at range. Raised from `40` in 2026-08-24's owner-focus pass — it is what lets the pet keep a target `OwnerFocusRange` away instead of being warped home mid-charge — and again from `60` to `84` in the 2026-08-25 leash widening. It also raises the owner-distance zone re-place while the pet is fighting, so the two legs can't fight each other. |
+| `AssistOnOwnerHit` | `true` | **The moment one of your attacks lands on an enemy, an engaged pet charges that enemy** rather than waiting for it to walk into `AggroRange`. This is what makes a pet useful to an archer: `AggroRange` is measured *pet*-to-enemy, and the game does not count something you shot at 30 m as an enemy you are "engaged" with until it aggros back and closes. The focus lasts 8 s and every further landed hit refreshes it, and it **outranks the pet's own self-defence** — the pet will leave whatever is biting it to go fight what you are shooting. Off = the older behaviour. |
+| `OwnerFocusRange` | `60` | How far (m) the pet will charge to reach the enemy your attack just landed on. Keep it at or under `CombatLeashDistance` (which is `84`, so the shipped pair has room to spare). |
 | `EnableSpecialAttack` | `true` | Allow firing the pet's Hunt as One signature attack. Requires `EnableCombat`. |
 | `EngageRange` | `20` | Command Pet Engage: scan range for an enemy in front of you when you have no locked target. |
 | `EngageConeDegrees` | `120` | Width of the "in front of you" cone the Engage scan uses. |
@@ -160,7 +166,7 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `PetAttackVocals` | `true` | Play the species attack sound from the body when its bite animation fires. |
 | `PetDamageScalePercent` | `100` | Global balance lever: scale every hit the pet deals, as a percent. `100` = unchanged. Covers all four pet damage paths. |
 | `SpeciesDamageScales` | *(empty)* | Per-species overrides of the above, as `Name=percent` pairs (e.g. `Hyena=60`). Exact name wins, else longest match. |
-| `UngovernedPetDamagePercent` | `50` | Pet damage while its owner has **not** learned Wild Unknown. `100` = no penalty. |
+| `UngovernedPetDamagePercent` | `50` | Pet damage while its owner has **not** learned Wild Unknown. `100` = no penalty. Damage only — travel is never gated. |
 
 ## [HuntAsOne] — the signature attack & your synced strike
 
@@ -180,6 +186,44 @@ See [Temperature & blankets](./temperature-and-blankets.md).
 | `BoltMaxFlightSeconds` | `6` | Backstop ceiling on waiting for a fired bolt's impact before ruling a miss. |
 | `SyncSkillCooldownToPet` | `true` | Make the skill advertise the active species' real signature cooldown, so the hotbar countdown is truthful. |
 | `BaseSkillCooldownSeconds` | `1` | The skill's own debounce cooldown when there's no species cooldown to sync to. |
+
+## [Loyalty] — the 14-tier ladder, locks, and power from the bond
+
+Loyalty runs 0–250 over fourteen tiers (see [Loyalty & bonds](./loyalty-and-bonds.md)). The whole
+ladder — each tier's floor, payout level, lock flag and power step — is one table you can retune
+live with `LadderOverride` + `reloadcfg`. The upper tiers (above Devoted) each pay one **power
+step** to the pet's effective stats, applied after the 0–100 loyalty stat lerp. The per-step amounts
+are the six knobs below; a species' `powerScale` manifest axis (or `[Pet] SpeciesPowerScales`)
+scales the steps. This is where the old **species relic** bonuses moved: relic scaling ships off and
+the relics are dormant.
+
+```ini
+[Loyalty]
+LadderOverride =
+EnableLocks = true
+EnableRelicScaling = false
+HpMultPerStep = 1.05
+DmgMultPerStep = 1.054
+ResistPerStep = 1
+ProtPerStep = 1
+BarrierPerStep = 1
+StatusResPerStep = 1
+```
+
+| Key | Default | Effect |
+|---|---|---|
+| `LadderOverride` | *(empty)* | Retune the whole 14-tier loyalty ladder without a rebuild: exactly 14 comma-separated rows of `floor[:payout[:lock[:power]]]` in tier order (Gone, Broken, Fraying, Guarded, Cautious, Steady, Trusting, Devoted, Unshaken, Boundless, Sworn, Fierce, Mythic, Eternal); an omitted field keeps the shipped row's value. Row 0's floor must be 0, floors strictly ascend (top ≤ 250), payouts 0–8 never fall, lock is 0/1, power ≥ 0. The shipped table is `0:0:0:0,1:1:0:0,15:2:0:0,40:3:0:0,55:3:1:0,75:4:0:0,90:4:1:0,100:4:0:0,125:5:1:1,150:5:0:2,175:6:1:3,200:7:0:4,225:7:1:5,250:8:1:6`. A defective string is refused loudly (`[LOYALTY]` warning) and the shipped table stays. Live via `reloadcfg`; the `[LOYALTY] ladder` boot/reload line prints the live table. |
+| `EnableLocks` | `true` | Loyalty **locks**: once a pet reaches a lock tier (Cautious, Trusting, Unshaken, Sworn, Mythic, Eternal on the shipped ladder) its loyalty can decay down *to* that tier's floor but never below it — a Trusting pet can never fray back to Broken, and a locked pet can never be abandoned. The floor is saved with the pet. `false` = loyalty decays freely; an already-earned floor stays in the save, inert, for a later re-enable. Dev: `setloyalty N` respects the floor (`setloyalty N force` lowers it); `setfloor N` sets it. Live via `reloadcfg`. |
+| `EnableRelicScaling` | `false` | Do species-relic stacks (Pearlbird's Courage, Leyline Figment, Metalized Bones) still buff the pet? Ships **off**: their per-stack bonuses moved onto the upper loyalty tiers. While off, relics are **dormant** — the pet refuses its relic **without consuming it**, already-eaten stacks stay on the save but pay nothing, and the Companion tab's *Relics* row reads "dormant". Turn on to restore the old relic feed **on top of** the loyalty power. |
+| `HpMultPerStep` | `1.05` | Max-HP multiplier per loyalty power step, compounding (`1.05` = ×1.34 at the 6-step top tier). Must be finite and > 0. |
+| `DmgMultPerStep` | `1.054` | Damage multiplier per step, compounding, on every damage **type** — Impact is deliberately untouched. `1.054` = ×1.37 at the top tier. |
+| `ResistPerStep` | `1` | Flat all-resistances points per step (clamped to −100..100; a species weakness shrinks toward 0). `1` = +6 at the top tier. |
+| `ProtPerStep` | `1` | Flat ProtectionAll per step. |
+| `BarrierPerStep` | `1` | Flat Barrier per step. |
+| `StatusResPerStep` | `1` | Flat all-status build-up resistance per step, under the same sub-100 ceiling every other contributor respects. |
+
+All six apply on the next sim tick — no relaunch. Forensics: the `[POWER]` boot lines report the
+power-scale table and whether relic scaling is on.
 
 ## [Synergy] — the Hunt as One stacking buff
 
@@ -275,7 +319,8 @@ LeapApexMeters = 1.5
 |---|---|---|
 | `EnableGiftSkill` | `true` | The Gift skill: the pet gives the player a species-defined gift. |
 | `GiftCooldownSeconds` | `600` | Gift skill cooldown (10 min). A no-pet cast refunds it; a "nothing" roll burns it. |
-| `EnableFeatherFletching` | `true` | Pearlbird feathers enchant an arrow stack in place with quality-tiered "Pearl Fletching". |
+| `EnableFeatherFletching` | `true` | Pearlbird feathers enchant arrows in place with quality-tiered "Pearl Fletching". Freshly fletched arrows re-stack with any arrows of the same type and the same fletching, including the stack in your quiver; differently-fletched stacks never combine. |
+| `FletchArrowsPerFeather` | `15` | Arrows one feather fletches, gathered across every stack of that arrow type in your pouch and equipped bag (so arrows that will not stack in the crafting menu still cost one feather). A bigger stack is split; `0` = uncapped. |
 | `FletchNameSuffix` | `true` | Fletched arrow stacks show their bonus in the display name (e.g. "Iron Arrow (+20%)"). |
 
 ## [Scent] — the pet's environment sense
@@ -315,9 +360,31 @@ LeapApexMeters = 1.5
 | Key | Default | Effect |
 |---|---|---|
 | `ScatologyGatesScrolls` | `true` | Recipe scrolls only drop once someone in the session has learned Scatology. |
-| `BeastOfBurdenCapacity` | `5` | Flat bag capacity the Beast of Burden passive adds while you have a pet. |
-| `EnableWildUnknownGate` | `true` | Region travel breaks the bond unless the owner has learned Wild Unknown (which also grants +5 loyalty per new region pair). |
+| `BeastOfBurdenCapacity` | `10` | Total flat carrying capacity Beast of Burden grants while you have a pet, **split 70/30: 70% onto the pet's own inventory, 30% onto your pouch** (at the default: **+7 pet / +3 pouch**). It adds nothing to your equipped backpack. `0` = the skill grants nothing anywhere. |
 | `EnableCommunionGate` | `true` | The bond's passive player buffs require the Communion skill. (This default withholds buffs on existing saves until Communion is bought.) |
+
+Beast of Burden is **one knob with a fixed 70/30 split** — there is deliberately no separate pet key
+and pouch key. In `BepInEx/config/cobalt.beastwhispering.cfg`:
+
+```ini
+[Skills]
+
+## Total flat carrying capacity the Beast of Burden passive grants while the player has a pet ...
+# Setting type: Single
+# Default value: 10
+BeastOfBurdenCapacity = 10
+```
+
+That grants **+7** on the pet's own inventory (added on top of its species carry weight — see
+[Data manifests](./data-manifests.md), `SpeciesCarry.txt`) and **+3** on your pouch. Set it to `12`
+for +8.4/+3.6, or to `0` to switch the skill's capacity off entirely. Your equipped backpack is not
+affected by this skill at all; the backpack bonus some pets grant is the separate per-species
+`BagCapacity` gift in `SpeciesBuffs.txt`, gated by `[Systems] EnableBagPerk`.
+
+> A changed default never migrates into a `.cfg` that already exists. An install generated before
+> this change still holds `BeastOfBurdenCapacity = 5` (which would read as +3.5 pet / +1.5 pouch) —
+> set it to `10` by hand, or let `scripts/sync-config.py` patch it from
+> `config/shared/cobalt.beastwhispering.cfg.overlay`, where it is pinned.
 
 See [Skills](./skills.md).
 
@@ -348,7 +415,7 @@ See [Skills](./skills.md).
 
 | Key | Default | Effect |
 |---|---|---|
-| `EnableStatusCures` | `true` | Feeding your pet a remedy cures it, exactly as using that remedy cures you: the item's *own* vanilla cleanse effect is applied to the pet's body. Antidote clears every tier of poison at once (it cleanses the Poison type, not one status), Bandages clear bleeding as well as healing, and Panacea / Hexes Cleaner / Mega Health Potion / Myconic Cleanser / Grilled Marshmelon and friends all work for the same reason — nothing is special-cased. A remedy is not food, so no species diet has to list it: any pet takes any cure. An item that would cure nothing is never consumed. A cure that rides a real meal is applied on the same single consume. Off = remedies are ordinary items again. Forensics: `curedump`. |
+| `EnableStatusCures` | `true` | Feeding your pet a remedy cures it, exactly as using that remedy cures you: the item's *own* vanilla cleanse effect is applied to the pet's body. Antidote clears every tier of poison at once (it cleanses the Poison type, not one status), Bandages clear bleeding as well as healing, and Panacea / Hexes Cleaner / Great Life Potion / Myconic Cleanser / Grilled Marshmelon and friends all work for the same reason — nothing is special-cased. A remedy is not food, so no species diet has to list it: any pet takes any cure. An item that would cure nothing is never consumed. A cure that rides a real meal is applied on the same single consume. Off = remedies are ordinary items again. Forensics: `curedump`. |
 | `WaterCuresStatuses` | `Burning,Burn` | **Fallback only.** A drink of plain water douses a burning pet exactly as it douses a burning player, and that is vanilla's own doing: every water type's drink effects live on the game's shared water dispenser (which is why no water *item* appears to carry a cleanse) and include a cleanse of the Burning status tag — so Immolate rides along, and the hot-weather temperature states, which are not on that tag, do not. We run those very components, so nothing here is modelled. This key is consulted only if that dispenser cannot be read yet, and then these comma-separated status identifiers are matched by name instead — all of them, not first-wins, since a fire source may apply either spelling. Discovery: `statusdump`; `curedump` reports which of the two paths is live. |
 
 ## [Anchor] — the invisible combat body
@@ -363,7 +430,7 @@ damage while the visible body puppets it. Most of these are for debugging.
 | `AnchorShowHealthBar` | `false` | Show the anchor's floating health bar. |
 | `AnchorLinkSummonSlot` | `true` | Register the anchor as the player's summon (rides owner teleports; conflicts with a real Conjure ghost). |
 | `HideSummonIcon` | `true` | Hide the synthesized "Summoned Ghost" HUD icon for the anchor. |
-| `AnchorLeashDistance` | `20` | Teleport the anchor to the player when it falls this far behind (out of combat). |
+| `AnchorLeashDistance` | `28` | **Fallback only — it does not govern an ordinary pet.** Teleport the invisible anchor to the player when it falls this far behind (out of combat; `CombatLeashDistance` applies while fighting). At the shipped `GlueMode = Always` the anchor is welded to the visible body every frame, so its position is not its own and this leash is skipped — the body's `[Pet] LeashDistance` (84) owns recovery and drags the anchor with it. The skip is deliberate: 28 sits far *below* 84, so applying it literally under the weld would pull the anchor home while the body is still legitimately out, splitting the pet in two. It bites only under `GlueMode = Off` / `Combat` (out of combat) and for a bodiless remote proxy anchor. Raised from `20` in the 2026-08-25 leash widening (+40%). |
 | `AnchorRespawnSeconds` | `60` | How long a downed pet stays gone before re-forming. |
 | `AnchorBaseHealth` | `110` | Base for the pet's combat HP (×1.5 at loyalty 100, ×0.5 at loyalty 0). |
 | `AnchorDealsDamage` | `false` | Let the anchor's invisible weapon deal damage. Off = the visible-combat system owns damage. |

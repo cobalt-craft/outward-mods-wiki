@@ -121,7 +121,7 @@ opt out of individually.
 | Domain | Verbs |
 |---|---|
 | Items | `give`, `drop`, `useitem`, `givewater`, `equip`, `unequip` |
-| World | `teleport`, `goto`, `settime`, `givemoney`, `face`, `moveto` |
+| World | `teleport`, `walkto`, `standoff`, `goto`, `settime`, `givemoney`, `face`, `moveto`, `firecamp` |
 | Combat | `sethp`, `combatclear`, `killnearest`, `swing`, `lockon`, `lockoff` |
 | Skills | `learnskill`, `unlearnskill`, `resetcooldowns`, `castspell` |
 | Status | `grantstatus`, `removestatus` |
@@ -138,6 +138,29 @@ A few highlights:
 - `givewater [clean\|river\|salt\|rancid\|leyline\|sparkling\|healing]` — spawn a pre-filled Waterskin.
 - `goto <scene> [spawnPoint]` / `teleport <x> <y> <z>` / `settime <hour>` — world staging. `goto` and
   `settime` are host-only (a guest driving them would desync a co-op party).
+- `firecamp [on\|off\|remove\|status] [distance 0.5-20]` — place a **real vanilla campfire** ahead of
+  the player and **light** it, so a test can sample genuine ambient temperature. `off` extinguishes
+  it where it stands (so recovery can be watched), `remove` destroys it, `status` prints the
+  campfire's live `TemperatureSource` distance bands and the step predicted at your range. Host-only.
+
+  This verb exists because `useitem Campfire Kit` cannot work, and that is worth knowing before
+  reaching for it on any other deployable: a deployable's `Use` does **not** deploy anything, it
+  opens an interactive placement mode (`BasicDeployable.OnItemUse` → `DeployablePlacer.StartPlacement`
+  → `Character.StartDeploy`). The placer then idles until `Character.DeployInput` is driven by a real
+  keypress; only on confirm does an RPC plus a `SetupGround` cast animation reach
+  `Deployable.DeployableCast`, the method that instantiates the campfire. A command channel has no
+  input frames to give, so `useitem` honestly reports `TryUse -> True` and nothing lands. `firecamp`
+  skips the aim mode and does `DeployableCast`'s own work.
+
+  **Lighting is not cosmetic.** `FueledContainer.StartInit` disables the campfire's
+  `TemperatureSource`, and only `Kindle()` re-enables it; both of the game's heat-source searches
+  skip a source that is not `isActiveAndEnabled`. An unlit campfire radiates exactly nothing, so a
+  spawn-only verb would have produced a convincing false negative.
+- **`standoff <metres> [bearing=<degrees>] [target=pet|nearest|<species>]`** and
+  **`walkto <x> <z>`** — the **ground-safe** placement pair. `teleport` writes whatever height it is
+  handed; these two take their height from the **navmesh** and **refuse to move you at all** when
+  there is none. (`walkto` was defective in 0.4.5/0.4.6 — see the version note below.)
+  See [Ground-safe placement](#ground-safe-placement-standoff--walkto) below.
 - `learnskill <name-or-ItemID>` / `unlearnskill <name-or-ItemID\|all>` — teach or forget any skill,
   so a test save doesn't need a cheat menu. `castspell <name-or-ItemID>` then casts a *learned* skill
   through the real quickslot pipeline (requirements, cooldown and mana all apply for real).
@@ -165,7 +188,27 @@ A few highlights:
 - `unstick` (alias `unwedge`) — the last-resort verb for a session that has stopped responding: bare
   it dumps the load-gate/pause/timescale state and changes nothing, `unstick fix` applies the
   smallest repair that fits, and `unstick force <step>` overrides a refusal you have read and
-  accepted.
+  accepted. The rungs, in the order `unstick fix` tries them:
+  `prologue` → `gate` → `pausemenu` → `timescale` → `forceunpause` (and `forceready`, which is
+  reachable only by naming it).
+
+  **`prologue` is the first rung and the usual answer.** Outward shows "context screens" (the
+  `ProloguePanel`) on a new game, on some area events and after a camp event. Showing it pushes a
+  `Prologue` entry onto the loader's pause stack, and the ONLY thing that takes it off again is
+  walking past the last screen with a keypress — which requires the game window to have OS focus.
+  On an unattended or unfocused box that press never comes, so the panel stays up, the world sim
+  stays paused, and the level-load coroutine stays parked *before* its "press any key" gate. Every
+  other symptom follows from that: no AI detection, no wander, no aggro, no hunger, no temperature,
+  no regen — while the mod command channel keeps answering normally, because it polls unscaled
+  time by design. The `prologue` rung presses the key for you, up to three times in case a further
+  context screen appears behind the first.
+
+  Two things the dump tells you that it did not used to. `prologue: panelUp=True` on its own line
+  names the holder; and after any rung, a **deferred** `verify` line re-reads the state three
+  quarters of a second later and grades it `HELD`, `REVERTED` or `NO-CHANGE`. The immediate
+  re-dump printed in the same frame as a repair can be stale — the loader only settles its pause
+  state in its own `Update` — so the `verify` line, not the `applied` line, is the one that says
+  whether gameplay is actually running again.
 - `reloadcfg` — re-read that mod's `.cfg` from disk. BepInEx 5 has **no config file-watcher**, so a
   hand-edited config does nothing until this verb runs (or the game relaunches). It registers only
   when the mod supplies its config file, because `BaseUnityPlugin.Config` is `protected` — only code
@@ -412,3 +455,81 @@ next:
   [EnchantKit](./enchantkit.md), [NetKit](./netkit.md), [SkillKit](./skillkit.md),
   [StoryKit](./storykit.md), [CompanionKit](./companionkit.md), [SpawnKit](./spawnkit.md)
 - [Wiki home](../README.md)
+
+
+## Ground-safe placement (`standoff` / `walkto`)
+
+`teleport <x> <y> <z>` is a **raw** write: the height you type is the height you get, with no ground
+probe of any kind. That is deliberate — reproducing a coordinate triple from an earlier log has to
+give back exactly that triple — but it means a guessed height can drop the character into a long
+fall. Two verbs exist so a script never has to guess.
+
+### `standoff <metres> [bearing=<degrees>] [target=pet|nearest|<species>]`
+
+Places you a **measured distance** from a reference body, on ground that body can walk back over,
+facing it. This is the primitive for anything phrased "stand N metres away and watch what the
+companion does" — leash distances, recall ranges, aggro radii.
+
+```
+standoff 42                        # 42 m from your pet, keeping the side you are already on
+standoff 84 bearing=180            # 84 m, due south of it
+standoff 12 target=nearest         # 12 m from the nearest wild creature
+standoff 20 target=Wolf Hyena      # …from a named species
+```
+
+- **Distance first, keywords after.** `bearing=` and `target=` may come in either order; anything
+  else on the line is a parse error rather than a silent ignore.
+- **`target=pet` needs a pet-aware channel.** It reads the same consumer-supplied accessor that
+  `grantstatus target=pet` uses, so it answers on Beastwhispering's channel and says so plainly
+  elsewhere. `target=nearest` / `target=<species>` work anywhere.
+- **Distance is clamped** to 1–200 m, and the clamp is logged.
+- **How it searches.** A fan of bearings (straight, ±20°, ±40°, ±60°, ±90°, ±135°, 180°) across a
+  ladder of ranges, tried **range-major**: every bearing at the exact distance you asked for is
+  probed before any shorter one, because the distance is usually the thing under test. Each
+  candidate is navmesh-sampled, settled onto the real collider surface, height-sanity-checked
+  against the reference body, and then **path-checked** from the reference body's own navmesh
+  polygon — a spot across a canyon is real ground but a useless place to measure a leash from.
+- **Failure is loud and total.** No landing found ⇒ nothing moves, an on-screen toast, and one
+  `[STANDOFF] REFUSED` line quoting the search radius, tolerance and candidate count. A landing that
+  is on ground but **not** path-connected is used with a prominent warning saying the reading will
+  measure an island rather than a leash.
+
+### `walkto <x> <z>`
+
+Absolute placement with **no height argument** — the **navmesh** decides it.
+
+```
+walkto 1250.5 -430
+```
+
+- **Navmesh or nothing.** The only thing that may set the height is a `NavMesh.SamplePosition` hit
+  (settled onto the collider surface underneath it). If the requested x/z has no navmesh anywhere in
+  its column, the verb **refuses** and nothing moves — it does not fall back to a bare collider.
+- **It sweeps the column, not one height.** Sample centres are tried downward-first from where you
+  currently stand, so a call made from an already-wrong elevation can still find the mesh below it
+  rather than compounding the error.
+- **It will not lift you.** A landing more than 3 m above your current height is only ever taken when
+  no lower rung of the column had navmesh at all, and then it is announced in the log before the
+  write, so a following distance measurement can be discarded.
+- **Failure is loud and total.** One `[WALKTO] REFUSED` line naming the probe heights, plus a
+  diagnostic note about what collider (if any) is in that column — reported, never used — and an
+  on-screen toast.
+
+> **Version note.** In ForgeKit **0.4.5 and 0.4.6** `walkto` had a collider fallback that could not
+> tell a floor from a ceiling: in a navmesh-free area it placed the character on the first collider a
+> long downward ray met, which in one measured case was **23.9 m above the ground on the character's
+> own x/z**, and repeat calls re-cast from the new height and could never come back down. Do not use
+> `walkto` on those two builds; **0.4.7** replaces the fallback with a refusal.
+
+### Which one to use
+
+| You want | Verb |
+|---|---|
+| A measured distance from your companion or a creature | `standoff` |
+| A known x/z landmark, ground height unknown (and on navmesh) | `walkto` |
+| To reproduce an exact coordinate triple from a log, height included | `teleport` |
+
+`teleport` still does what it always did. It now also **warns before it writes** when the
+destination is more than 3 m above the nearest ground, and names these two verbs in that warning.
+
+Log tags: `[STANDOFF]`, `[WALKTO]`, and `[DEV]` for `teleport`.

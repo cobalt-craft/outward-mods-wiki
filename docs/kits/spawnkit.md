@@ -178,6 +178,9 @@ says so loudly in the log, and co-op spawning stays off toward it. Update everyo
 | `[Coop] RoomWarmRequestTimeoutSeconds` | `30` | How long the host waits for a guest to answer an `sk.want` before re-asking. Long on purpose — answering means running a donor load, deferred to a safe moment. |
 | `[Coop] RoomWarmRequestMaxTimeoutSeconds` | `120` | Ceiling on the doubling backoff between retries. Values below the timeout are clamped up, never rejected. |
 | `[Coop] RoomWarmRequestAttempts` | `3` | How many times the same `sk.want` is sent before the host stops asking for that (peer, species) this session. Minimum 1. |
+| `[Coop] GuestPrewarm` | `true` | A **guest** may warm a species on its own initiative — the menu's Prewarm button and `spawnprewarm` — instead of being refused as host-only. The ask is queued and runs under the same deferral rules as a host's `sk.want` (never in combat, never while the loader/save is busy). `false` = the old UI: Prewarm greyed `(host only)`. Spawn and Warm (trip) stay host-only regardless. |
+| `[Coop] GuestPrewarmBudget` | `4` | Donor cycles a guest may spend **per room** on its own prewarm asks — a bucket separate from `MirrorHarvestBudget`, so the host's spawn choices and the player's own never compete. `0` = unlimited (the ceiling still applies). |
+| `[Coop] GuestDonorCycleCeiling` | `10` | Hard **per-session** cap on donor cycles a guest spends across both buckets. Donor cycles are the LightProbesManager crash resource (~11–17 per process); the room buckets reset, this does not. A reached ceiling refuses every guest warm with `session-ceiling` and publishes `budget=0` so the host stops asking. `0` = no ceiling. |
 
 ```ini
 [Coop]
@@ -187,10 +190,22 @@ RoomWarmRequestCap = 3
 RoomWarmRequestTimeoutSeconds = 30
 RoomWarmRequestMaxTimeoutSeconds = 120
 RoomWarmRequestAttempts = 3
+GuestPrewarm = true
+GuestPrewarmBudget = 4
+GuestDonorCycleCeiling = 10
 ```
 
-> **Built 2026-08-20, not live-verified.** Rows GM10–GM19 in
-> `docs/guest-mirror-harvest-testplan.md` are the live gates.
+**Guest voluntary warm.** A guest's Prewarm button (and `spawnprewarm`) is live when
+`GuestPrewarm` is on: the species is *queued*, not harvested on the spot, and the row reads
+`(queued to warm when safe (in-combat))` / `(warming now)` until it lands. The menu's footer shows
+`(guest warm N/M)` — voluntary cycles spent against `GuestPrewarmBudget`. `skwarmdump` on the guest
+prints a `local buckets:` line (`mirror a/b voluntary c/d session e/f`) and the class-tagged queue
+(`Ghost(host), Hyena(voluntary)`). The `budget=` the host sees is `min(mirror-left, ceiling-left)`
+— the voluntary bucket is local-only, since the host's only use of that number is "may I send this
+peer an `sk.want`".
+
+> **Built 2026-08-20 (mirror) / 2026-08-24 (guest voluntary warm), not live-verified.** Rows
+> GM10–GM28 in `docs/guest-mirror-harvest-testplan.md` are the live gates.
 
 ## Settings
 
@@ -269,6 +284,27 @@ Unknown verb or `help` lists them all.
 | `skwarmdump` | Warm-mirror census: this machine's warm set, every peer's row, the room-wide intersection and the want book (see *Room-wide warm mirror*). |
 | `skcoopdump` | Co-op state on this machine: handshakes, mirrored spawns, message counters. (More co-op dev verbs under `help`: `skinject` / `skfail` / `skdrop` / `skresync` / `skgone` / `skstream` / `skfollow`.) |
 | `selftest` | Sanity-check the install; look for `[SELFTEST] … DONE` in the log. |
+
+### "My spawn just stands there" — reading `aiLive=`
+
+Every `[SPAWN]` mint line and every `spawndump` row carries an `aiLive=` field: the one-glance answer
+to *can this creature engage on its own?*
+
+| `aiLive=` | Meaning / what to do |
+|---|---|
+| `Ticking` | Live. It can detect and attack by itself. |
+| `WorldPaused` | **The world sim is paused** — nothing detects or wanders, spawned *or* vanilla, even though every dev verb still answers normally. Run Beastwhispering's `unstick fix`, then re-check. |
+| `AiBehaviourDisabled` | The AI component is switched off — usually the far-distance cull. Get closer, or raise `[AI] AiDisableDistance`. |
+| `NotStartInitialized` | The body's start-up never finished, so detection is dead while wandering still looks normal. Try `ghostdiag <name> fix`. |
+| `DistanceCulled` | No player inside its enable distance. Close the gap. |
+| `NoAiGraph` | No usable AI at all — report it; this body should never have been spawned. |
+
+A related trap on the same line: **`charAIDisable=True` does NOT mean the AI is disabled.** It only
+reports that the distance-culling component exists, which is the healthy default for most creatures.
+Read `aiLive=`, never `charAIDisable=`.
+
+To make a creature attack on command rather than waiting for it to notice you, use AggroKit's
+`attack` / `forcetarget` verbs — see [AggroKit](./aggrokit.md).
 
 SpawnKit also registers ForgeKit's shared [CommonVerbs](./forgekit.md) pack on the same channel, so
 `give`, `goto`, `teleport`, `settime`, `learnskill`, `scenedump` and the rest are available here too.

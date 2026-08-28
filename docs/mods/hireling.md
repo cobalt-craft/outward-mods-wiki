@@ -52,6 +52,15 @@ last saved. Their stats re-read from the live NPC, exactly like a fresh recruit.
   from that NPC rather than frozen at recruit time, so an NPC that has changed since looks different
   when your follower comes back.
 - **One follower at a time.** Recruit again after you have dismissed the current one.
+- **NPCs that other mods spawn and drive cannot be recruited, and never re-form a follower.** Any
+  body stamped as script-owned (`ForgeKit.ScriptedBody`) is skipped by both the recruit scan and the
+  re-form search. In practice that is **every StoryKit NPC** — Maren, the trainers, and every
+  DangerousRoads road event (the wandering merchant, the town-guard patrol). They are spawned,
+  driven and despawned on their owner's schedule, so a follower cloned from one outlives that
+  bookkeeping and answers to nobody. `recruit` next to such an NPC says so in the log and on screen;
+  a saved follower whose name happens to match one waits for an ordinary NPC instead. This is
+  deliberate and wider than the road merchant it was found on — if you recruited a StoryKit NPC on
+  an older build, that follower will no longer re-form.
 - **In co-op, only the host recruits and dismisses.** A guest who presses the key is told the host
   handles followers; a guest's own reload never re-forms one.
 
@@ -86,6 +95,8 @@ stats layer on top.
 | Combat | `AttackInterval` | `1.4` | Seconds between the follower's attacks. |
 | Combat | `AggroRange` | `12` | How far (m) the follower will engage an enemy you are fighting. |
 | Combat | `AttackRange` | `2.6` | The follower's melee reach (m). |
+| Combat | `AssistOnOwnerHit` | `true` | The moment one of your attacks lands on an enemy, the follower charges that enemy instead of waiting for it to walk into `AggroRange` (which is measured *follower*-to-enemy, so a target you shot at range never qualified). The focus lasts 8 s, each further landed hit refreshes it, and it outranks the follower's own self-defence. |
+| Combat | `OwnerFocusRange` | `60` | How far (m) the follower will charge to reach the enemy your attack just landed on. Keep it at or under the combat leash (60 m). |
 | Stats | `UseFolkStats` | `true` | Blend the FolkStats table with the live capture. Off = capture only. |
 | Stats | `PreferCapturedVitals` | `true` | When blending, the captured HP/speed win over the table row. Off = the row sets vitals too. |
 
@@ -108,6 +119,8 @@ AttackDamage = 25
 AttackInterval = 1.4
 AggroRange = 12
 AttackRange = 2.6
+AssistOnOwnerHit = true
+OwnerFocusRange = 60
 
 [Stats]
 UseFolkStats = true

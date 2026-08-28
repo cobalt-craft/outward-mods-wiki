@@ -138,6 +138,7 @@ Beastwhispering they live in `BepInEx/config/cobalt.beastwhispering.cfg`, sectio
 | `StationMaxRestations` | `6` | Re-stations allowed per engagement; past it the body chases (logged once). |
 | `StationFarMeters` | `3` | An enemy farther than attack range + this from the pet forces a re-station regardless of the line test. |
 | `StationProgressMeters` | `1` | Converge or chase: a "the enemy left me" re-station must close at least this much ground on the new station. Two in a row that do not means the pet gives up the stance and plainly chases for the rest of that fight. |
+| `StationEnemyFastMetersPerSecond` | `0` | Fast hold: while the enemy is moving faster than this (m/s) the "enemy left me" re-station waits — a running mob drags the station away as fast as the pet walks, so the pet keeps the station it has and the host's converge pin brings the mob to it. `0` = off (identical to before). A walking mob is ~1–2 m/s, a charging one 6+; try `4`. |
 
 ```ini
 [Combat]
@@ -149,7 +150,13 @@ StationArriveMeters = 0.8
 StationMaxRestations = 6
 StationFarMeters = 3
 StationProgressMeters = 1
+StationEnemyFastMetersPerSecond = 0
 ```
+
+The enemy's speed is measured by the body from consecutive positions (`CompanionKit.Core.SpeedEstimate`:
+0.1 s windows, blended, a >30 m/s jump is a teleport and ignored). The hold applies only to the
+"enemy left me" rule (and a planted pet's re-close against that same far, running enemy); the
+line-of-fire re-station is never held. `stationdump` shows the held windows as `fastHolds=`.
 
 (These are the defaults.) The log tag is `[STATION]` — `set: why=first` on the first station,
 `restation #n why=…` on each later one, `planted` on arrival, `cap fallback` once past the cap;
@@ -180,7 +187,7 @@ verb or `help` lists them all.
 | `expedition` | No args: status — harvest state, template-cache census, manifest, config, this launch's auto-warm decision. |
 | `expedition <scene\|species>` | Round trip to an oversized donor scene, caching a body template for every species it donates. Hands-off (loading-screen gates pass automatically). Species with an ordinary additive donor are refused toward that cheaper path. Host/offline only. |
 | `expeditionreset` | Force the expedition guard open after a wedge (doesn't teleport anyone — use `goto` for that). |
-| `templateclear` | Free the session body-template cache (logs the count freed). |
+| `templateclear [all]` | Free the session body-template cache. Default keeps `origin=prebuilt` (bundle) templates and logs `cleared N harvested, kept M prebuilt`; `all` wipes everything. |
 | `templateprobe` | Per cached template: species + a defensive mesh-readability read. |
 | `photondump` | Photon view-registry health (donor-harvest diagnostics). |
 | `audiodump` / `audioprune` | Audit / prune the global audio registrant list (donor scenes self-register audio that must be detached on unload). |
@@ -262,6 +269,36 @@ combat.SetAttackProfile(effectiveAttributes);
 companion.Stance.CommandEngage(target);   // priority 0, honored at any range
 companion.Stance.CommandDisengage();       // passive + a run-home grace window
 ```
+
+### The combat target ladder
+
+Every 0.3 s an engaged companion re-picks what to fight. The rules are pure
+(`Core.CombatTargetPolicy.Decide`) — the game side only gathers the facts:
+
+| Prio | Source | Gate |
+|---|---|---|
+| 0 | **commanded** — your explicit `CommandEngage` order | no range gate at all; only the combat leash |
+| 1 | **owner-focus** — the enemy the owner's own attack last landed on | `OwnerFocusRange` (60 m), held 8 s, refreshed by every landed hit |
+| 2 | **anchor-defend** — whoever the companion's own anchor has locked (i.e. is attacking it) | `AggroRange` (12 m) |
+| 3 | **player-engaged** — the nearest AI in `player.EngagedCharacters` | `AggroRange`, and the player must be in combat |
+
+Any pick beyond `CombatLeashDistance` is dropped as stale, and a stale *commanded* target is also
+un-commanded so the next scan cannot re-pick it. Each transition is logged with its reason:
+`[<COMBATNOUN>] target: none -> Bandit (owner-focus, petPos=…)`.
+
+**Owner-focus** (2026-08-24) is the tier that makes a companion useful to a ranged player. Both of
+the older auto tiers are gated on `AggroRange`, which is measured *companion*→enemy; and vanilla
+does not even list a target you shot at 30 m in `player.EngagedCharacters` until it aggros back and
+closes to 25 m (`Character.UpdateCombatStatus` / `CheckIfCombatWorthy`). So a bow user's companion
+simply waited. `OwnerFocusTracker` supplies the missing signal by observing the owner's own landed
+hits — `Character.HasHit` for melee and `Projectile.OnProjectileHit` for ranged (the melee seam
+excludes bows, so both are needed) — and it is deliberately placed *above* self-defence: the
+companion will leave whatever is biting it to go fight what its owner is attacking. Consumers turn
+it off with `ICompanionSettings.AssistOnOwnerHit`, which restores the previous ladder exactly.
+
+In multiplayer nothing new crosses the wire: the hit callbacks run on the attacking player's own
+machine, so a guest's own shot is a local event and the resulting engage reaches the master through
+the existing `ck.proxy.target` mandate.
 
 Key public surface:
 

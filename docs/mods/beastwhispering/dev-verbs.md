@@ -77,7 +77,7 @@ never consumed. `curedump` (below) shows what each carried item would cure right
 | `huntasonesync` | Diagnostic for the Hunt as One / pet-special cooldown sync. |
 | `synergy <0-4>` | Set the Synergy stack count for testing. |
 | `ftk` | Cast For the Kill (skill-free). |
-| `travelcheck` / `travelcross` | Inspect / drive the Wild Unknown region-travel gate headlessly. |
+| `travelcheck` / `travelcross` | Inspect / drive the region-crossing arrival ruling headlessly (the first-crossing +5; travel is never gated). |
 | `marenstatus` / `marenspawn` / `marendespawn` / `marenhere` | Inspect, spawn, despawn, or re-place the trainer NPC (`marenhere` stamps her at your current spot). |
 
 ## Diagnostics & dumps
@@ -89,6 +89,7 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 |---|---|
 | `diag` | Consolidated `[DIAG]` snapshot (scene, vitals, combat, nearby AI, pet). |
 | `statdump` | Pet stats: captured vs loyalty-tuned vs the anchor's live readback; damage scale. |
+| `powerdump` | The loyalty power ladder alone: tier → PowerStep → the species `powerScale` with which key decided it (`cfg` / `table` / `default`) → the `[Loyalty]` per-step policy → relic stacks (and whether relic scaling is dormant) → the measured before/after deltas. `statdump` shows where the pet's stats came from (`[STATS] stats for '…' from harvest|template|save|ledger|none`); the last-known capture per species lives in `BepInEx/config/bw_species_stats.txt`. |
 | `dietdump` | Diet table & feed resolution. |
 | `tamingdump` | Taming-food table & registration. |
 | `tempdump` | Temperature / comfort / blanket state. |
@@ -148,7 +149,8 @@ is still boot-time — a brand-new species needs a relaunch):
 | `expedition <scene\|species>` | Run a donor-region round trip to cache a region-only creature's body. |
 | `harvest <scene> <creature>` | Additively load a donor scene and clone a creature out of it. |
 | `tamecached` | Tame from a cached body template. |
-| `templateprobe` / `templateclear` | Inspect / clear the body-template cache. |
+| `templateprobe` / `templateclear [all]` | Inspect / clear the body-template cache. The default clear keeps the prebuilt bundle bodies (Pearlbird, Veaber, Hyena, Armored Hyena) and reports `cleared N harvested, kept M prebuilt`; `templateclear all` wipes those too (`bundlebody reload` brings them back). |
+| `bundlebody [reload]` | Bundle body tier status per shipped species; `reload` drops and re-registers all four shipped bodies (idempotent — also the way past a Missing/Failed latch or a `templateclear all`). |
 
 ## Test-state controls
 
@@ -161,7 +163,7 @@ Beastwhispering's own staging verbs — they place the pet's simulation exactly 
 | `setcourage <0-5>` | Set the species-relic stack count. |
 | `simskip <seconds>` | Fast-forward the pet sim — decay, drains and expiries all apply honestly. |
 | `sethp <pet\|player> <n\|n%>` | Set health, floored at 1 (Beastwhispering's pet-aware version of the shared verb — death still needs real damage). |
-| `aggro <me\|pet> [name]` / `pacify [radius]` | Force / clear enemy aggro. |
+| `aggro <me\|pet> [name]` / `pacify [radius]` | Force / clear enemy aggro. `aggro` is a **one-shot** lock: AISCombat re-polls its target every 0.5 s and a hit on the enemy has a 50 % chance of switching it, so a staged attacker can be back on you moments later. To stage a fight that *sticks* — and that reports why when it doesn't — use AggroKit's `attack` verb on the `ak` channel instead (`attack pet`, `attack pet Hyena 30`): see [AggroKit → dev verbs](../../kits/aggrokit.md). |
 
 ## Shared verb packs
 
@@ -173,16 +175,65 @@ second command channel.
 | Group | Verbs |
 |---|---|
 | Items | `give [pouch\|bag\|ground] [qty] <name-or-id>` · `drop` · `useitem` · `givewater [type]` · `equip` · `unequip <slot>` |
-| World | `teleport <x> <y> <z>` · `goto <scene> [spawn]` (host only) · `settime <hour>` (host only) · `givemoney <n>` · `face` · `moveto` |
+| World | `teleport <x> <y> <z>` (raw height) · `walkto <x> <z>` · `standoff <metres> [bearing=<deg>] [target=pet\|nearest\|<species>]` · `goto <scene> [spawn]` (host only) · `settime <hour>` (host only) · `givemoney <n>` · `face` · `moveto` |
 | Combat | `combatclear` · `killnearest [species] [radius]` · `swing` · `lockon` · `lockoff` |
 | Skills | `learnskill` · `unlearnskill <name-or-id\|all>` · `resetcooldowns` · `castspell` |
 | Status | `grantstatus <name> [target=player\|pet] [force]` · `removestatus` |
 | Engine dumps | `statusdump` · `pos` · `scenedump` · `skydump` · `combatmgrdump` · `keybinds` · `ragdolldump` · `psdump` |
 | Containers | `containerdump [radius]` · `containerroll [filter] [radius] [fresh\|reopen]` (host only) |
-| Recovery | `unstick` (alias `unwedge`) — diagnose and recover a wedged session |
+| Recovery | `unstick` (alias `unwedge`) — diagnose and recover a wedged session. `unstick fix` tries `prologue` → `gate` → `pausemenu` → `timescale` → `forceunpause`; the `prologue` rung dismisses the context-screen panel that pins the world sim on an unfocused box, and a deferred `verify … HELD/REVERTED` line grades every rung |
 
 The pack's own `sethp` and `groundprobe` are **not** registered here: Beastwhispering ships pet-aware
 supersets of both, listed above.
+
+### `swing` refusals read themselves (ForgeKit 0.4.8)
+
+`swing` drives the game's own attack entry (`Character.AttackInput`), whose gate requires the
+character to be **in locomotion** — and "locomotion" is the animator's neutral stand/walk/run TAG,
+not movement. A character mid-animation (an item use, a stagger, a knockback, the tail of a dodge,
+sitting) is out of it *while standing perfectly still*, so an attack can be refused with a weapon
+drawn and full stamina.
+
+Since 0.4.8 the verb says so instead of leaving you to infer it:
+
+* the state line ends with a verdict and the whole gate —
+  `| gate=CLOSED nextIsLocomotion=False locomotionAction=True sheathing=False chargeCancelCd=False cancelChargingSent=False nextAtkAllowed=0.`
+* a closed gate is **waited on** for up to 2 s (the same courtesy the sheathed path has always paid
+  the draw animation) before the attack is attempted;
+* a genuine refusal names every failing condition and the remedy, as a warning:
+  `[SWING] AttackInput(0,0) -> False — refused by vanilla's AttackInput gate (Character.cs:5749): InLocomotion=False. …`
+* a press that vanilla merely **queued** as the next combo/charge step also returns false, and is
+  reported as ordinary information rather than a failure — watch for the hit, not the bool.
+
+If the wait does not pay off, the verb logs
+`[SWING] gate never opened within 2s — NOT attacking.` and takes no swing — and points at `unstick`,
+because a gate that stays closed for a full two seconds usually means the world sim itself is wedged
+or paused. (The command channel keeps answering in that state: it polls unscaled time, so verbs
+respond normally while nothing in the world advances.)
+
+### Standing a measured distance from your pet — `standoff`
+
+`teleport` writes the height it is given and never probes the ground, so guessing a coordinate can
+drop you into a long fall. `standoff` is the ground-safe way to position yourself relative to the
+pet, and it is what the leash and recall checks are driven with:
+
+```
+standoff 42                  # 42 m from the pet, keeping the side you are already on
+standoff 84 bearing=180      # 84 m, due south of it
+standoff 28                  # the anchor distance
+```
+
+It searches a fan of bearings at the requested range first, sampling the navmesh, settling onto the
+real collider surface and confirming the pet can actually **path** to the spot. If it finds nothing
+it moves you **nowhere**, toasts, and logs a `[STANDOFF] REFUSED` line saying what it tried. Because
+it reads the pet through Beastwhispering's pet accessor, `target=pet` is the default here;
+`target=nearest` and `target=<species>` aim at wild creatures instead.
+
+`walkto <x> <z>` is the sibling for an absolute spot whose ground height you do not know: it takes
+its height from the navmesh, sweeps the column downward from where you stand, and **refuses** rather
+than falling back to a bare collider. It needs **ForgeKit 0.4.7 or newer** — on 0.4.5/0.4.6 it could
+place you tens of metres in the air in a navmesh-free area, and every distance measured after such a
+call is worthless. Full reference: [ForgeKit — Ground-safe placement](../../kits/forgekit.md#ground-safe-placement-standoff--walkto).
 
 **[SkillKit](../../kits/skillkit.md)** (it has no channel of its own): `castdump` · `castclear` ·
 `skillverify` · `skilldump <name>` · `skillitemdump [name]` · `skillkitreloadcfg`.

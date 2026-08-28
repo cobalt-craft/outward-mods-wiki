@@ -31,10 +31,10 @@ hanging off the outer columns. Rows are listed bottom (entry) to top.
 | Skill | Type | Cost | Prerequisite | Effect |
 |---|---|---:|---|---|
 | **Scatology** | Passive | 50 | — (entry) | Slain tameable creatures may drop their **taming-food recipe scroll**. This is the discovery path for taming any species. |
-| **Command Pet** | Active | 100 | Scatology | One button, three orders in a cycle: Engage → Follow → Stay. **Engage**: send the pet at your locked target, or the nearest enemy in front of you. **Follow**: recall it to your side to wait passively. **Stay**: it holds the spot it is standing on — until your next order, or until you get far enough away that it has to come find you (then it is following again). |
-| **Beast of Burden** | Passive | 100 | Scatology | +5 carrying capacity on your equipped backpack while a pet travels with you. |
+| **Command Pet** | Active | 100 | Scatology | One button, three orders in a cycle: Engage → Follow → Stay. **Engage**: send the pet at your locked target, or the nearest enemy in front of you. **Follow**: recall it to your side to wait passively. **Stay**: it holds the spot it is standing on — until your next order, or until you get far enough away that it has to come find you (then it is following again). **Stay is fully passive: a staying pet will not defend itself.** If something attacks it while it holds the spot, it will not fight back, and it can be killed there. Use Stay to park a pet somewhere safe, not to post a guard. |
+| **Beast of Burden** | Passive | 100 | Scatology | +10 carrying capacity while a pet travels with you, split between the two of you: **+7 on the pet's own inventory** and **+3 on your pouch**. Your backpack is not affected. |
 | **Release Pet** | Active | 50 | Scatology | End the bond for good — the animal returns to the wild and the pet is gone. |
-| **Wild Unknown** | Passive · **breakthrough** | 500 | (breakthrough) | Two effects. Your pet may **follow you across region travel** (the long, ration-consuming journeys) instead of the bond breaking; and, understood at last, it **fights at full strength**. Without this skill the pet holds back, dealing reduced damage. |
+| **Wild Unknown** | Passive · **breakthrough** | 500 | (breakthrough) | Your pet **fights at full strength** (without it, its damage is throttled — 50% by default), and every beast you tame afterwards starts **two loyalty tiers higher**. As the tree's breakthrough it also opens Hunt as One, Communion and Heal Pet. It does **not** affect region travel or the first-crossing loyalty bonus — you get both without it. |
 | **Hunt as One** | Active | 500 | Wild Unknown | Command the pet to unleash its **signature attack**; you strike alongside it on the same target for bonus damage. Landing both halves builds **Synergy** (a stacking damage buff). Some species also **taunt** with it — the Armored Hyena's Brace stance pins its target's aggro onto the pet, for longer the deeper the bond. |
 | **Communion** | Passive | 600 | Wild Unknown | Attunes you to the pet: unlocks the **bond's passive gifts** (per-species stat buffs and the bag-capacity bonus), shown as a tier-coloured badge you can read at a glance. |
 | **Heal Pet** | Active | 500 | Wild Unknown | Channel your bond to restore the pet to full health. |
@@ -50,12 +50,16 @@ Four of the passives are not just abilities — they switch parts of the mod on:
 - **Scatology → recipe-scroll drops.** Until someone in your session has learned it, tameable
   creatures don't drop the recipe scrolls you cook their taming food from. (Any player character in a
   co-op session counts, not only the host.)
-- **Wild Unknown → full pet damage + region travel.** Without the breakthrough your pet's damage is
-  throttled, and taking a ration-travel journey **breaks the bond** on arrival. With it, the pet hits
-  at full strength, travels with you, and each first crossing of a new region pair grants a little
-  loyalty.
-- **Beast of Burden → carry capacity.** The +5 backpack capacity follows the *bond*, not the body — a
-  downed pet still carries for you.
+- **Wild Unknown → full pet damage.** Without the breakthrough your pet's damage is throttled; with
+  it, the pet hits at full strength (and new tames start much more loyal). It does **not** gate
+  travel or the first-crossing loyalty bonus: **your pet follows you across every region and earns
+  that bonus either way**, skill or not.
+- **Beast of Burden → carry capacity.** The capacity follows the *bond*, not the body — a downed pet
+  still carries for you. It is split **70/30**: 70% onto the pet (on top of whatever its species can
+  already carry) and 30% onto your pouch. The total is one setting,
+  `[Skills] BeastOfBurdenCapacity` in `BepInEx/config/cobalt.beastwhispering.cfg` (default `10`, so
+  +7/+3); `0` switches it off. This skill adds nothing to your equipped backpack — the backpack
+  bonus a Phytosaur grants is a separate per-species gift.
 - **Communion → bond buffs.** The pet's passive player buffs (stat bonuses from its species, plus the
   bag-capacity gift) only apply once Communion is learned. Before that, a pet grants no passive buff.
 

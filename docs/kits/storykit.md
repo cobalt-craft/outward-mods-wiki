@@ -253,6 +253,7 @@ NpcRegistry.Register(new NpcSpec
 | `OutfitPool` | A list of `OutfitSpec { ChestName, HelmetName, BootsName }`; one is rolled per spawn on the same seed. Each piece is resolved like `BackpackName`; an unresolvable piece **warns and is skipped** (the spawn proceeds), a resolved one overrides the matching `ChestId`/`HelmetId`/`BootsId`. Empty entries warn offline. |
 | `Merchant` | Grafts the game's `Merchant` onto the body: `StockTableNameContains` (a live merchant's table, else a loaded `Dropable` asset), `FallbackItemNames` (generated into the pouch when no table / empty roll), `RefreshRateGameHours`, `NonSavable` (default true), `Buyer`/`Seller`. **Requires `Mobile`** — the graft rides the mobile rig, so a static merchant is refused offline rather than spawning shopless. |
 | `Choice.Shop(id, text)` | A root-menu row that opens the shop through a real vanilla `ShopDialogueAction`. Requires `Merchant` (error otherwise). The talk prompt is hidden while the AI is in a combat/suspicious state. |
+| `Choice.Action(id, text, replyText, actionId)` | A reply leaf that first runs a host callback registered through `ChoiceActions` — see *Callback rows* below. |
 
 Offline rules (`SpecValidation`): `Combat` without `Mobile`, `Merchant` without `Mobile` and a
 `Shop` row without `Merchant` are **errors**; `Ai` without `Mobile`, a `Merchant` with no `Shop` row
@@ -278,11 +279,48 @@ config.
 | `NpcRegistry.StatusDump(idOrNull)` | Log template/placement/live state for one NPC or all. |
 | `TreeLayout.Validate(SkillTreeDef)` → `List<TreeIssue>` | Offline layout validation; pair with `TreeLayout.HasErrors(...)`. |
 | `SpecValidation.Validate(NpcSpec)` → `List<SpecIssue>` | Offline spec-shape validation (trainer optional, inconsistent trainer refused); pair with `HasErrors` / `FirstError`. |
+| `ChoiceActions.Register(specId, actionId, fn)` | Register the host callback behind a `Choice.Action` row (see below). `Unregister(specId)` / `TryGet` / `Has` complete the set. |
 
 Core data types: `NpcSpec`, `Placement`, `TrainerSpec`, `DialogueSpec`, `Choice` (with
-`Choice.Train` / `Choice.Reply` / `Choice.Menu` / `Choice.Shop` factories), `AiSpec`, `CombatSpec`,
+`Choice.Train` / `Choice.Reply` / `Choice.Menu` / `Choice.Shop` / `Choice.Action` factories), `AiSpec`, `CombatSpec`,
 `MerchantSpec`, `OutfitSpec`, `SkillTreeDef`, `SlotDef`, `SpecIssue`. Pure helpers: `OutfitRoll.Pick(pool, roll01)`,
 `VisualRoll.Seed(id, salt)` / `Roll(seed, bounds)` / `Roll01(seed, stream)`.
+
+### Callback rows (`Choice.Action`) — a reply that knows something
+
+A `Choice.Action(id, text, replyText, actionId)` row is a **Reply leaf that first runs one of your
+own callbacks**. If the callback returns a non-empty string it *replaces* the reply text for that
+click, so a row can answer with live state the spec never knew — a running tab, a quest step, a
+reputation read. An empty (or null) return leaves the authored `replyText` standing.
+
+```csharp
+// once, before the NPC is rigged — registration is keyed by SPEC id
+StoryKit.ChoiceActions.Register("dr_merchant_7", "balance", player =>
+    Debt.Of(player) > 0 ? $"You still owe me {Debt.Of(player)} silver." : "");   // "" = the spec line
+
+var spec = new NpcSpec { Id = "dr_merchant_7", Name = "Caravan Trader", Mobile = true };
+spec.Dialogue.Greetings.Add("Road's been quiet. Lucky us.");
+spec.Dialogue.Choices.AddRange(new[]
+{
+    Choice.Shop("shop", "Let's see what you're carrying."),
+    Choice.Menu("business", "About our business.",
+        Choice.Action("balance", "What do I owe you?", "Nothing at all.", "balance")),
+});
+```
+
+- **Register BEFORE the NPC is rigged.** A row whose `actionId` has no registered handler is dropped
+  at plan time with `[STORYKIT] … is an Action row with no registered callback … dropped` — a row that
+  does nothing is worse than an absent one. Registering later takes effect on the next rebuild.
+- **Legal at any menu depth**, unlike `Choice.Train` / `Choice.Shop`: each Action row owns its own
+  pair of nodes rather than pointing at a singleton. It returns where a plain Reply would (the parent
+  menu, or the greeting at the root).
+- **`Kind = Action` with an empty `ActionId` is an ERROR** from `SpecValidation`.
+- **Your callback may throw.** It is called inside a try/catch: the throw is logged and the
+  conversation still reaches the statement with the authored text.
+- The argument is the `Character` who is talking, resolved when the row is clicked (never a
+  serialized binding), and may be null in odd lifecycle moments — guard it.
+- **`NpcRegistry.Unregister(id)` drops the whole spec's callback table**, so a consumer minting
+  per-spawn-unique specs (`dr_merchant_<n>`) does not leak one closure per event.
 
 ### Nested topic menus (`Choice.Menu`)
 

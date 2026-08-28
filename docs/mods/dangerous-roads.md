@@ -93,7 +93,7 @@ spawner rather than the ambush director and the spawn menu disagreeing about the
 Not every event is hostile. Sometimes the toast reads *"A merchant is on the road to the east"*: a
 **Travelling Merchant** with a trade backpack has appeared out of sight and is walking the road to
 one of this region's exits, where he leaves the map. Catch him and talk: you can open his shop
-(stocked like the region's roaming caravan trader), ask where he is headed, or let him go. He is
+(stocked like the region's roaming caravan trader) or let him go. He is
 friendly, hard to kill and nearly harmless — and if something attacks him and you drive it off, he
 says so the next time you talk. He is never saved and carries no loot.
 
@@ -123,6 +123,45 @@ RaidDelaySeconds = 120
 
 `[Events] MerchantWeight` is how often he comes up relative to an ambush (`0` = never);
 `MerchantCooldownSeconds` is the shortest gap between two merchants. Only one is on the road at a time.
+
+## The town-guard patrol
+
+Another peaceful-ish card: *"A town patrol is fighting troglodytes to the east."* Two or three
+guards in the nearest town's colours — Cierzo plate, Berg's wolf plate, Levant's elite plate,
+Monsoon silver, Harmattan's antique plate, New Sirocco militia — are holding the road against four
+to six troglodytes, and they are genuinely losing people. You can walk past.
+
+If you **help** — any damage to any of the trogs, yours or your pet's or an arrow's — the guard who
+is left standing offers you the town's bounty afterwards: five or six silver for each troglodyte
+that fell, paid once. If you only watched, you get thanks and a warning. Either way they then form
+up and walk off toward the far end of the road, and are gone once you can no longer see them.
+
+You cannot hurt the guards (`[Patrol] GuardProtected`), so a pet that picks fights will not turn the
+rescue into a brawl. The troglodytes can, and do.
+
+```ini
+[Patrol]
+GuardMin = 2
+GuardMax = 3
+TrogMin = 4
+TrogMax = 6
+GuardHealth = 450
+GuardProtection = 12
+GuardDamageMult = 0.9
+GuardProtected = true
+RewardSilverMin = 5
+RewardSilverMax = 6
+StalemateSeconds = 90
+LingerSeconds = 20
+RemoveRadiusMeters = 120
+```
+
+`[Events] PatrolWeight` is how often a patrol comes up relative to an ambush (`0` = never);
+`PatrolCooldownSeconds` is the shortest gap between two of them. One patrol is on the road at a time,
+and the troglodytes count against the same `[Wave] MaxOwnActive` cap as any other spawn — which is
+why `RemoveRadiusMeters` matters: the guards give their slots back only once nobody can see them.
+
+*Built 2026-08-26, not live-verified — see `docs/road-patrol-testplan.md` (PT0–PT21).*
 
 **Finding him.** Besides the toast's bearing, the HUD compass shows a **green dot** for the merchant
 from the moment he appears until he leaves — at any distance, slightly larger than the red hostile

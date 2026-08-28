@@ -130,7 +130,8 @@ AggroKit uses the command channel **only** — it deliberately does not adopt Fo
 | `aistates [name\|nearest]` | Dump one AI's state machine. |
 | `aggrolog [n\|on\|off\|clear]` | Show the last `n` recorded `[AGGRO]` events, toggle live log mirroring, or clear the buffer. |
 | `watch <name\|nearest\|off>` | Watch one AI's (state, target) changes and log each one with how long the previous held. |
-| `forcetarget [name\|nearest]` | Force an AI onto the player and auto-watch it. |
+| `forcetarget [name\|nearest]` | Force an AI onto the player and auto-watch it. Reports the outcome and, on a failure, the reason (see `attack`). |
+| `attack <victim> [attacker] [holdSeconds]` (alias `aggroonto`) | **Make something attack a chosen victim, and say why if it doesn't.** `victim` is a name substring, `uid:xxxx`, `me` (the player), or `pet`/`ally` (the nearest player-faction AI that is not you — a companion anchor, a hireling, a summon). `attacker` defaults to the nearest non-player-faction AI within 40 m. A pair targetability override is installed *only* when the faction matrix would veto the lock, the attacker's squad is alerted the way a vanilla detection does, and the pin is **sustained** for `holdSeconds` (default 20, `0` = one-shot) so AISCombat's 0.5 s re-poll and the 50 % on-hurt target switch cannot steal it straight back. Every run logs `N retargeted` plus a named outcome — `Locked`, `NoAttacker`, `NoVictim`, `AttackerHasNoTargeting`, `VictimNotAlive`, `VictimHasNoLockingPoint`, `BlockedByOverride`, `NoCombatState`, `LockDidNotHold` — at **Warning** level when nothing was retargeted. |
 | `feud <nameA> <nameB> [nooverride\|both]` | Make two AIs fight; installs a targetability override for the pair unless `nooverride`; `both` forces both directions. |
 | `taunt [radius]` | Redirect every AI in radius onto the player. |
 | `calm [radius]` | Drop the target of every AI in radius. |
@@ -148,6 +149,20 @@ AggroKit uses the command channel **only** — it deliberately does not adopt Fo
 | `status` | One-glance status: player flags, live overrides, controls, watches, event buffer. |
 | `restore` | Reset everything — player targetable + detectable, all overrides/controls/watches cleared. |
 | `selftest` | Zero-interaction environment checks (`[SELFTEST] PASS/FAIL … DONE`). |
+
+**Staging a fight against a companion.** The reliable form is `attack` on AggroKit's own channel —
+one line, sustained, and self-evidencing:
+
+```
+attack pet            # nearest hostile fights your companion for 20 s
+attack pet Hyena 30   # name the attacker, hold it for 30 s
+attack me             # the classic: bring the nearest hostile onto you
+```
+
+A success reads `[AggroKit] attack: 1 retargeted — 'Hyena#3c36' [Hounds] -> 'Summoned Ghost#NxPw'
+[Player] dist=2.4m state=AISCombatMeleeHound hold=20s [Locked] — locked …`; a miss reads
+`0 retargeted` with the reason and its remedy, as a **warning**. Confirm with `aggrodump` — the
+attacker's `target=` should be the companion, not you.
 
 Dev-staged overrides and controls (`feud`, `shieldme`, `decoy`, …) are cleared automatically on a
 real zone or town transition, so nothing you stage in a test session leaks into normal play.

@@ -51,6 +51,7 @@ Free-text `notes` may sit alongside; they are documentation only and are never c
 | `slopeTilt` | `true`/`false` — does the body pitch and roll to match the ground? An anatomy fact: quadrupeds tilt, bipeds stay upright. No entry = upright | `SpeciesSlopeTilt.txt` |
 | `combatStyle` | `"chase"` or `"opposite"` — does the pet chase its target, or station **across** the enemy from you so your arrow corridor stays open? No entry = chase | `SpeciesCombatStyle.txt` |
 | `synergyResist` | `{ "multiplier": … }` — this species' term in the all-resistances bonus its body earns while Synergy stacks are up (loyalty sets the ceiling, stacks approach it). No entry = the `[Synergy] ResistMultiplierDefault` backfill | `SpeciesSynergyResist.txt` |
+| `powerScale` | a bare number in (0, 1] — how much of the loyalty ladder's per-step power gains (the tiers above Devoted) this species experiences. `1` = the full ladder (every shipped species); `0.5` = the top tier pays what a full species gets halfway up. No entry = `1` | `SpeciesPowerScale.txt` |
 | `synergyBonus` | Per-Synergy-stack payoff for the **player** — a list of `{ "stat": …, "perStack": … }` | `SynergyBonus.json` |
 
 A few tables are **global**, not per-creature: the consumable blankets (`data/blankets.json`) and the
@@ -59,7 +60,7 @@ weather-resist foods that grant temperature relief.
 ### Overriding a shipped table without a rebuild
 
 The one-value-per-species tables — `SpeciesCombatStyle.txt`, `SpeciesSynergyResist.txt`,
-`SpeciesSlopeTilt.txt`, `SpeciesCarry.txt`, `SpeciesYawOffsets.txt` — ship embedded in the DLL as the
+`SpeciesPowerScale.txt`, `SpeciesSlopeTilt.txt`, `SpeciesCarry.txt`, `SpeciesYawOffsets.txt` — ship embedded in the DLL as the
 built-in defaults, and each accepts a **same-format override file dropped next to the configs**:
 
 ```
@@ -80,11 +81,12 @@ rebuild and no relaunch:
 |---|---|---|
 | `SpeciesCombatStyle.txt` | `BepInEx/config/SpeciesCombatStyle.txt` | `reloadcombatstyle` |
 | `SpeciesSynergyResist.txt` | `BepInEx/config/SpeciesSynergyResist.txt` | `reloadsynergyresist` |
+| `SpeciesPowerScale.txt` | `BepInEx/config/SpeciesPowerScale.txt` | `reloadpowerscale` |
 | `SpeciesSlopeTilt.txt` | `BepInEx/config/SpeciesSlopeTilt.txt` | `reloadslopetilt` |
 
-(`SpeciesSynergyResist.txt` has a second override layer above it — the `[Pet]
-SpeciesSynergyResistMultipliers` config string, which wins per key. See the
-[config reference](./config-reference.md).)
+(`SpeciesSynergyResist.txt` and `SpeciesPowerScale.txt` each have a second override layer above
+them — the `[Pet] SpeciesSynergyResistMultipliers` / `[Pet] SpeciesPowerScales` config strings,
+which win per key. See the [config reference](./config-reference.md).)
 
 ## Item, status & scene names — not raw IDs
 

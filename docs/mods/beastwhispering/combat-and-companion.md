@@ -9,7 +9,7 @@ can be taught signature skills. A native **Companion** tab in the character menu
   fight. It falls back to following you when the fight ends.
 - **Species-true stats.** The pet keeps the tamed creature's own resistances, protection, health,
   natural attack, and movement speed — a Hyena hits and moves like a Hyena. Those stats are scaled by
-  loyalty, so a Devoted pet is meaningfully tougher and stronger than a Broken one. (Species weaknesses
+  loyalty, so a Trusting pet is meaningfully tougher and stronger than a Broken one. (Species weaknesses
   carry over too — devotion shrinks them, neglect deepens them.)
 - **Signature attack — "Hunt as One."** A learnable skill that fires the pet's signature attack while
   you land a synced strike on the same target. Each species' signature is different: a status-inflicting
@@ -29,7 +29,10 @@ quickslot icon always shows the order your *next* press gives:
   front of you if you have no lock.
 - **Follow** — the pet stands down, stops scanning for targets, and returns to following you; the
   encounter actually ends (combat music stops).
-- **Stay** — the pet stays passive *and* holds the spot it is standing on. It stays put until you give
+- **Stay** — the pet stays passive *and* holds the spot it is standing on. **Passive here means it
+  will not defend itself**: attacked while staying, it does not retaliate and can be killed where it
+  stands. That is the trade-off for telling it to hold — park a pet with Stay, do not post it as a
+  guard. It stays put until you give
   another order, or until you walk far enough away (the normal leash distance, `[Pet] LeashDistance`)
   that it teleports to you — at which point it is **following** again and the icon updates on its own.
   Recalling it (F9) or changing area ends a Stay the same way.
@@ -44,7 +47,8 @@ Command Pet, Hunt as One, and the other pet abilities are learnable skills — s
 By default, a pet only reaches its **full** damage once its owner has learned the **Wild Unknown**
 skill. Until then, every hit the pet deals is scaled down (to **50%** by default) — a deliberate
 progression gate. Learning Wild Unknown removes the penalty. This is separate from, and stacks with,
-the global and per-species damage-scale settings used for balance tuning. See
+the global and per-species damage-scale settings used for balance tuning. It is a DAMAGE penalty
+only — it has nothing to do with travel: a pet follows its owner across every region regardless. See
 [Skills](./skills.md) and the [config reference](./config-reference.md) (`[Combat]`).
 
 ## The Companion tab
