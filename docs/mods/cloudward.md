@@ -31,6 +31,13 @@ either side:
 
 Back up your `SaveGames/` folder before your first real sync.
 
+**You can see it working.** If the launch pull takes more than a moment — a first sync, or a big
+share over a slow connection can run for minutes — a small progress bar and a one-line status appear
+at the bottom of the main menu ("checking share…", "syncing saves… 12/44"), ending with a brief
+"sync complete — pulled 40" before disappearing. A fast sync shows nothing at all, so on most boots
+you'll never see it; there is no setting for it. The `[CLOUDWARD]` lines in `BepInEx/LogOutput.log`
+carry the same story in more detail.
+
 ### What gets installed
 
 Cloudward is two files, and they go in **different places**:
