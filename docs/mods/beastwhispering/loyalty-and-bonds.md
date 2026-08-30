@@ -44,7 +44,8 @@ cold and sluggish, but the bond itself is safe. The lock is saved with the pet. 
 ### Payouts — eight levels, same ceiling
 
 The bond buffs and other payouts (bond buffs, kill favor, scavenge dice, feed buffs, the execute
-heal, the Synergy resistance ceiling) step through **eight payout levels** across the whole ladder.
+heal, the Synergy resistance ceiling, the Hyena's dodge chance — 10% at the bottom of the ladder,
+18% at Eternal) step through **eight payout levels** across the whole ladder.
 The old top-of-ladder amounts now sit at **Eternal**; a Trusting or Devoted pet pays **half** of that, and every tier
 in between is a step on the way. Several tiers share a level (Guarded/Cautious, Steady through
 Devoted, Unshaken/Boundless, Fierce/Mythic), so a new tier name doesn't always mean bigger numbers;
@@ -159,7 +160,7 @@ one almost nothing. Examples from the shipped roster:
 |---|---|
 | Hyena | Physical damage |
 | Pearlbird | Movement speed |
-| Veaber | Decay damage |
+| Veaber | All elemental damage (Ethereal, Decay, Electric, Frost, Fire) |
 
 Some species also grant extra backpack capacity as part of the bond. The exact buffs are data-driven
 per creature — see [Data manifests](./data-manifests.md).

@@ -128,6 +128,8 @@ Most subsystems have a `…dump` verb that prints its table, its live resolution
 | `groundprobe` | Measure the navmesh under the player, puppet and anchor (Beastwhispering's pet-aware version of the shared verb). |
 | `sniff` | Force a scent scan now. |
 | `selftest` | Run the compute-layer self-test (F10). `SelfTest.cs` runs `Beastwhispering.Core` in-game and logs `[SELFTEST] PASS/FAIL …` lines ending in one `DONE` summary; `[SelfTest] RunSelfTestOnLoad=true` runs it at boot so one unattended headless boot yields the full report. |
+| `idlebreak [n]` | Play the pet's idle-break (peck/preen) variant `n` now, gates bypassed — a random variant if omitted. Needs a species row + a rig that carries the trigger. |
+| `idlebreakdump` | Idle-break pipeline: flag → table row → gates (combat / settled / owner loafing / Stay) → timer → counters. |
 
 ## Retune tables live (`reload…`)
 

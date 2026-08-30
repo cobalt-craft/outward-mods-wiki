@@ -88,7 +88,7 @@ forget, the mod says so once in the log rather than leaving you guessing.
 | `VerbHost` / `VerbContext` | A thin wrapper over the registry that adds a per-verb prologue: resolve the local player, an optional Photon master-only gate, and a per-verb error tag. |
 | `SelfTestHarness` | The `[SELFTEST] BEGIN` / `PASS:` / `FAIL:` / `SKIP:` / `DONE pass= fail= skip=` report shape — wire up a handful of `Check(name, condition)` calls and get one consistent, greppable self-test report. Use `Skip(name, why)` (or `CheckIf(canRun, …)`) for a check that cannot run *here* — a selftest at the main menu should report `skip=`, not `fail=`. |
 | `Notify` | An on-screen info toast for the player, mirrored to the log so log-only sessions see it too. |
-| `Lifecycle` | `WhenPlayerReady` — a coroutine that waits until the player is actually placed on a gameplay scene (past the game's void/staging coordinates) before your mod starts touching it, plus `IsSanePosition` for the same check inline. |
+| `Lifecycle` | `WhenPlayerReady` — a coroutine that waits until the player is actually placed on a gameplay scene (past the game's void/staging coordinates) before your mod starts touching it, plus `IsSanePosition` for the same check inline. **`IsGameplayLive()`** (0.4.11) — the one spawn gate: the load is done AND the loader no longer holds gameplay paused (its "press any key" window outlives the load by seconds; a body spawned inside it comes up T-posed / naked / with an inactive AI root). Null loader or a throwing read = not live. **`WhenGameplayLive(onLive, timeoutSeconds = 30, tag)`** — the matching wait (unscaled time; one `[LIFECYCLE]` line on timeout, then it proceeds). Spawn through `StoryKit.NpcRegistry` / `SpawnKit.Spawner` and you get the gate for free; read the loader flags yourself and `Kits.Integration.Tests` fails. Pure rule: `LoadPhase.IsGameplayLive(LoadSnapshot)`. |
 | `TableLoader<T>` / `EmbeddedRes` | Embedded-default-plus-config-override data tables: ship a sane default table inside your DLL, and let players override it by dropping a same-format file into `BepInEx/config/`. |
 | `Keybinds` | A cross-mod keybind registry: each mod claims its keys, and if two mods claim the same key ForgeKit logs a warning naming both claimants and where to rebind. `IsFree(combo)` asks whether a candidate key is already claimed (useful when picking a default), and ForgeKit logs the full census once on the first frame of every boot, so any log pull carries it. |
 | `NameCandidates` | The "config carries names, the game carries the truth" ladder. Asset identifiers (status names, item names) can't be known offline, so a mod ships a comma-separated candidate list in config and this resolves it against the running game: first candidate the registry knows wins, cached on the raw config string so a config reload re-resolves. A list that resolves to nothing warns **once**, naming every candidate. Two modes: `Resolve()` when your target is a prefab you apply by name, and `TryValidate()` + `FindFirst()` when the live object is reachable — that second mode treats the registry as a typo check only and asks live state every call, which is the safer default when two variants of a name can both exist. A failed lookup is never cached, so a name registered late still resolves. |
@@ -431,6 +431,32 @@ Two traps worth knowing:
   logged, never silent.
 - **`Notify.Log`** is a settable static; assign it (`Notify.Log = Logger`) in your `Awake` so toasts
   are mirrored under your mod.
+
+### Freeze a player (`PlayerHalt`, 0.4.12)
+
+Vanilla freezes a player with the bare bool `CharacterControl.InputLocked` (what `EnterBed` sets):
+movement input is zeroed and interaction stops; attacks are **not** blocked. Because it is a bare
+bool, two features freezing the same player would unfreeze each other — `PlayerHalt` refcounts it
+per character and only unlocks when the last hold is gone. Every hold is forgotten on scene load.
+
+```csharp
+public static class PlayerHalt {
+    public static IDisposable Hold(Character c, string owner);   // lock on first hold (+ StopMovingBody); Dispose releases
+    public static void Release(Character c, string owner);      // drop every hold this owner has on c
+    public static bool IsHeld(Character c);
+    public static void ReleaseAll(string owner);                 // drop every hold this owner has anywhere
+}
+```
+
+```csharp
+using (ForgeKit.PlayerHalt.Hold(player, "mymod.cutscene"))
+    yield return PlayCutscene();          // input locked for the duration; released on Dispose
+// or, across frames without a using:
+ForgeKit.PlayerHalt.Hold(player, "mymod.ambush");
+… ForgeKit.PlayerHalt.ReleaseAll("mymod.ambush");
+```
+
+Null-safe throughout; log tag `[HALT]`. Not live-verified yet.
 
 ### What stays OUT of the kit (the extraction rule)
 

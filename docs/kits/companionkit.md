@@ -162,6 +162,44 @@ line-of-fire re-station is never held. `stationdump` shows the held windows as `
 `restation #n why=…` on each later one, `planted` on arrival, `cap fallback` once past the cap;
 Beastwhispering's `stationdump` prints the live state.
 
+### Hit-frame damage (the bite lands when the animation says so)
+
+A companion's melee bite is dealt at the attack clip's **hit frame**, not at the moment the swing is
+triggered. Vanilla attack clips carry `HitStarted` / `HitEnded` animation events (the game uses them
+to arm a weapon's hit detector for exactly the frames the blade is moving); the kit puts a small
+receiver on the companion's animator and deals the queued bite when `HitStarted` fires. So the
+target's HP drops when the jaws close, a dodge or recall during the wind-up cancels the bite
+outright (no damage), and a target that stepped out of reach during the wind-up is missed
+(`bite whiffed`). A creature whose clip carries no such event is detected after three swings in a row
+time out (one warning line, `no HitStarted on '<body>'`) and its bites are dealt after the fallback
+window from then on. Two things to know: a multi-hit clip deals **one** bite per swing (the first
+`HitStarted`), and a swing that starts before the previous swing's hit frame **replaces** the pending
+bite — one bite is lost per overlap, never two for one clip — so a species that attacks faster than
+its clip's hit frame does a little less damage than before; Beastwhispering's self-test warns when its
+`AttackInterval` is shorter than `HitFrameFallbackSeconds`.
+
+Settings, in `BepInEx/config/cobalt.companionkit.cfg` section `[Combat]` (all live via `ckreload`):
+
+| Key | Default | Effect |
+|---|---|---|
+| `DamageOnHitFrame` | `true` | The release guard. `false` = the older behaviour: damage at the trigger, before the animation plays. |
+| `HitFrameFallbackSeconds` | `1.5` | How long a queued bite waits for `HitStarted` before it is dealt anyway (0.1–3). Creature clips place the event anywhere from ~0.3 s to ~1.2 s after the swing starts. |
+| `HitFrameReachSlack` | `1.5` | At the hit frame the bite lands only if the target is within attack range × this (1–3). |
+
+```ini
+[Combat]
+DamageOnHitFrame = true
+HitFrameFallbackSeconds = 1.5
+HitFrameReachSlack = 1.5
+```
+
+Log lines: `[COMPANION] bite on HitStarted → '<target>' (X.X m, attackID=n) on '<body>'` per landed
+bite, `[COMPANION] swing cancelled (…) — pending bite dropped` when a dodge cancels one, and
+`[COMPANION] bite whiffed …` when the target was gone or out of reach at the hit frame.
+**CombatHUD:** the floating damage number now appears at the hit frame — where your own weapon's
+would — and a bite that was cancelled shows no number at all. The swing seen by other players in
+co-op is unchanged (it is mirrored at the trigger; the clip's own hit frame lines up on its own).
+
 ### Example configuration
 
 `BepInEx/config/cobalt.companionkit.cfg` — created on first launch. Excerpt:
@@ -170,6 +208,10 @@ Beastwhispering's `stationdump` prints the live state.
 [Effigy]
 EnableCompanionEffigies = true
 MaxBodies = 4
+
+[Combat]
+DamageOnHitFrame = true
+HitFrameFallbackSeconds = 1.5
 ```
 
 Dev commands run from `BepInEx/config/ck_cmd.txt`, and the species→scene donor table is
@@ -267,8 +309,36 @@ combat.SetAttackProfile(effectiveAttributes);
 
 // standing orders (survive body re-forms because they live on the bond):
 companion.Stance.CommandEngage(target);   // priority 0, honored at any range
-companion.Stance.CommandDisengage();       // passive + a run-home grace window
+companion.Stance.CommandDisengage();       // = Follow: passive + a run-home grace window
+companion.Stance.CommandStay();            // passive + hold the spot (CompanionBody.StaySpot)
+companion.Stance.Mode;                     // Core.CommandMode: Engaged | Follow | Stay
+companion.Stance.Changed += m => …;        // fires synchronously on every mode change
+companion.Stance.LastWhy;                  // "cmd" | "reset" | "warp:<reason>" | "new-body"
 ```
+
+### The stance state machine
+
+`CommandStance` is a thin adapter over `Core.StanceMachine` (`core/CompanionKit.Core/CommandCycle.cs`):
+a pure `Step(ref StanceState, StanceSignal, detail, now)` with ordered if-block rules (line order =
+priority). Orders (`Engage`/`Follow`/`Stay`/`Reset`) are unconditional; the body events
+`WarpedToOwner` and `NewBody` end a Stay back to Follow. Every transition logs
+`[COMPANION] stance <from>→<to> why=<why>`.
+
+Readers never compare modes — they ask the trait seam `StanceMachine.Passive(mode)` (true for Follow
+AND Stay) and `StanceMachine.HoldSpot(mode)` (Stay only), which is what `Stance.Passive` / `Stance.Stay`
+return. That is what lets a new state land without touching a consumer.
+
+**Adding a behaviour input.** An *edge* (something that happened once — a burst of damage, an order):
+add a `StanceSignal` value, an if-block in `Step`, and a `Post*` on `CommandStance`. A *level*
+(pet/owner HP fraction, synergy stacks, an affix): a future `StanceMachine.Tick(ref state, in levels, now)`
+driven per frame — edges and levels deliberately never share one struct.
+
+**Overlay, not replace (ruling 2026-08-29).** Autonomous states (Retreat, Guard, …) never overwrite the
+player's order. `StanceState` gains an `Overlay` (nullable) beside `Commanded`; `Effective = Overlay ??
+Commanded`; the trait seam reads `Effective`, the quickslot icon reads `Commanded`. A pet told to Stay
+that retreats at low HP is the discrete pair `(Stay, Retreat)` and walks back to its spot when the
+overlay clears. A rule may write `Commanded` only when the input is meant to *cancel* the order — a
+deliberate per-rule choice, never the default.
 
 ### The combat target ladder
 
@@ -431,6 +501,46 @@ counting it would make a healthy session read as steady loss). The decision ladd
 tested routing and only its codec and apply are new code. `CompanionPetFx`'s cast half and
 `CompanionPlayerFx` are the two shipped users; `ck.effigy.swing` predates the helper and still
 hand-writes its ladder.
+
+**Master-originated transients — the pet cue (`ck.pet.cue`).** Every carrier above ORIGINATES on
+the owner's machine, which is what makes the own-echo skip safe. A moment the *host* decides — the
+pet-evade dodge, rolled on the host for its own pet AND for every guest's proxy — inverts that: the
+owning guest never fired anything, so the skip would drop the one machine that moves the puppet.
+Register such a carrier with the options overload and the ladder applies on the owner too:
+
+```csharp
+_cue = NetBus.RegisterFireAndForget("ck.pet.cue", "ck.proxy.pet.cue",
+    ProxyPets.AuthorizePetOwner, ApplyCueWire, () => Enabled,
+    new FireAndForgetOptions { MasterOriginated = true });
+```
+
+The kit ships one such carrier, the **pet cue**: `CompanionPetFx.FireCue(ownerUid, cueKey, dir)`
+on the host (local apply is unconditional — `SendToOthers` no-ops in solo) → wire
+`v1\t<cueKey>\t<x,0,z>` (`NetProtocol.BuildPetCue` / `TryParsePetCue`; the key is a consumer word,
+the direction is a flat XZ vector hardened at both ends) → `CompanionEffigy.ApplyCue` on every
+machine: the OWNER hands (body, cueKey, dir) to the `CompanionPetFx.PetCueLocal` seam (the consumer's
+trigger + sound + hop on the real puppet); every other machine resolves the trigger through the
+`CompanionPetFx.CueTrigger` seam (`(species, cueKey) → trigger`, the `FlourishTrigger` shape — a
+species with no word for the cue is a counted `no-vocab` drop, never a per-hit log line), fires it
+via `EffigySwingMirror.MirrorTrigger` and plays the species dodge sound for the `dodge` key. Peers
+see the hop through the position stream, not the pose. `CompanionPetFx.PlayTrigger(body, trigger)`
+is the public existence-guarded, warn-once, child-Animator-safe trigger play the flourish uses;
+`CompanionPetFx.ReplayTrigger(body, trigger)` (0.4.25) is the same play that RESTARTS — the kit
+learns which state a trigger leads to on its first play and a replay drives that state from
+normalized time 0 (a re-fired trigger is otherwise ignored while its state is already playing), so
+a consumer's chained dodge poses every time. `CompanionCombat.CancelSwing(reason)` (0.4.25) clears a
+queued `Attack1` and asks the consumer's `CancelHook` to abort a timer-judged strike; it logs
+`[COMPANION] swing cancelled (…)` only when something was pending (`SwingsCancelled` counter).
+Rulings: an ordinary signature wind-up cancelled by a dodge deals nothing and its **cooldown stands**
+(the press was real); the one exception is a For-the-Kill leap in flight — the leap holds the agent,
+the dodge cannot hop, and the strike is KEPT (`[EVADE] dodged (no hop: leap in flight; strike kept)`).
+The swing mirror has already gone out by the time a dodge cancels, so remote players see the swing
+begin and then the Dodge pose — only the damage is taken back. Counters: `netdump` (`ck.pet.cue` drops incl. `no-vocab` /
+`no-owner-seam`), `effigydump` (`cues=` / `cueMissing=` per body), `petfxdump` (`cueTrigger=` /
+`petCueLocal=` seam presence). The cue rides the `[PetFx] EnablePetFx` kill-switch in
+`BepInEx/config/cobalt.companionkit.cfg` (off = no cue sends, no cue applies); *whether* a pet
+dodges is the consumer's own flag (Beastwhispering `[Evade] EnableEvade`), evaluated on the host
+only — receivers always apply what arrives.
 
 **Persistent — a store row.** State goes through `NetBus.RegisterStore(name, StoreOptions)` (the
 `petfx` / `effigy` / `proxy` stores above): the store owns the announce latch, periodic refresh,

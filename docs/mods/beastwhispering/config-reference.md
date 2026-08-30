@@ -298,6 +298,50 @@ LeapApexMeters = 1.5
 | `CueVolume` | `0.5` | Volume (0–1) of the parry cue at brace-enter. `0` = none. |
 | `EnableTaunt` | `true` | Entering the stance pins the pet's current target's aggro onto the pet. The pin lasts **1 second at minimum loyalty rising to 5 seconds at maximum**, and fires once per Hunt as One cast, with an on-screen line (*"… draws the enemy's fury with an infernal growl!"*). Species without a taunt entry in their data are unaffected. |
 
+## [Evade] — the Hyena's dodge
+
+Ships **off**. A species with an evade entry (`SpeciesEvade.txt` — the Hyena: 10% at the bottom of the
+loyalty ladder, 18% at Eternal) can dodge an incoming melee, arrow or bolt: the hit does no damage and
+the pet plays its dodge animation, sound and a short hop away from the attacker. Area blasts and
+damage-over-time ticks are never dodged. In co-op the host's settings decide for every pet in the room.
+
+| Key | Default | Effect |
+|---|---|---|
+| `EnableEvade` | `false` | Turn the dodge on. `false` = no roll, no animation — the feature is dark. |
+| `HopMetres` | `3.4` | How far the pet hops away from the attacker. The path stops at the first wall or navmesh edge (a hop shorter than 0.5 m is skipped); no walkable ground there = no hop (the dodge still counts). |
+| `HopSeconds` | `0.3` | How long the hop takes. |
+| `CooldownSeconds` | `3` | After a dodge, the pet cannot dodge again for this long. |
+| `ReengageHoldSeconds` | `0.6` | After the hop the pet holds its ground for this long before closing on the enemy again (0–3; `0` = re-close immediately and skip the face-the-attacker turn). |
+
+Per-species override without a rebuild: `BepInEx/config/SpeciesEvade.txt`, one `Species=chance,chanceAtMax,Trigger`
+line each (e.g. `Hyena=100,100,Dodge` dodges everything), then `reloadevade`. Forensics: `evadedump`; `forceevade [n]` makes the next n eligible hits dodge for certain.
+
+## [IdleBreak] — the Pearlbird's peck and preen
+
+Ships **on**. A species with an idle-break entry (`SpeciesIdleBreaks.txt` — the Pearlbird: three peck/preen
+clips) plays one of them when you stand still: the first a few seconds after the bird settles, then every
+so often while you keep idling. Moving, an attack or a knock cancels it. Purely cosmetic — nothing to do
+with combat, and in co-op only you see your own bird's pecks (v1).
+
+| Key | Default | Effect |
+|---|---|---|
+| `Enable` | `true` | Turn idle breaks on. `false` = the bird just stands. |
+| `StartSecondsMin` / `StartSecondsMax` | `2` / `8` | How long after the bird settles (and you are idle) the first break fires — a random point in this window. |
+| `RepeatSecondsMin` / `RepeatSecondsMax` | `5` / `15` | Gap between breaks while you keep standing still. |
+
+```ini
+[IdleBreak]
+Enable = true
+StartSecondsMin = 2
+StartSecondsMax = 8
+RepeatSecondsMin = 5
+RepeatSecondsMax = 15
+```
+
+Per-species override without a rebuild: `BepInEx/config/SpeciesIdleBreaks.txt`, one
+`Species=Trigger,CountParam,Count` line each, then `reloadidlebreaks`. Forensics: `idlebreakdump`;
+`idlebreak [n]` plays variant `n` right now. Idle breaks while following ride the loaf feature (`[Follow] LoafDistanceMax` must be above 0); on a Stay spot they fire regardless.
+
 ## [SkillEcho] — the pet's bonus strike on your weapon skills
 
 | Key | Default | Effect |
@@ -436,7 +480,7 @@ damage while the visible body puppets it. Most of these are for debugging.
 | `AnchorDealsDamage` | `false` | Let the anchor's invisible weapon deal damage. Off = the visible-combat system owns damage. |
 | `AnchorSpeciesVoice` | `true` | Species-correct hurt/death cries + silencing of the ghost's stock audio. |
 | `GlueMode` | `Always` | How the anchor is position-coupled to the visible body. `Always` = welded every frame. |
-| `GlueOffsetBehind` | `0.3` | Weld offset (m) behind the body along its facing. |
+| `GlueOffsetBehind` | `0` | Weld offset (m) of the invisible anchor along the body's facing: positive = behind, negative = ahead, 0 = dead-centre. Was `0.3`; enemies measure their stop distance to the anchor, so an offset onto the hindquarters had them stepping into the model to reach it. Range −0.5…1. |
 | `UnifyTargets` | `true` | Keep the anchor and pet locked on the same enemy. |
 | `AnchorPlayerCollision` | `PassPlayer` | How the anchor collides with players: `PassPlayer` (can't shove you), `Block` (pre-fix), `Phantom` (blocks nothing). |
 

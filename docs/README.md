@@ -17,6 +17,7 @@ New here? Start with **[Installing](installing.md)**.
 | [Beastwhispering](mods/beastwhispering/README.md) | Tame wild Outward animals as persistent pets — feed them, bond with them, and fight alongside them. |
 | [DangerousRoads](mods/dangerous-roads.md) | Repopulate the overworld with wandering ambush encounters — cleared country is dangerous again. |
 | [Hireling](mods/hireling.md) | Recruit a townsperson as a persistent human follower. |
+| [Echoes](mods/echoes.md) | Your other saved characters wander the town of the region they last saved in. |
 | [Cloudward](mods/cloudward.md) | Sync your saves across devices via a mounted/shared folder. |
 | [SpawnKit](kits/spawnkit.md) | Spawn any creature beside you from an in-game menu. |
 

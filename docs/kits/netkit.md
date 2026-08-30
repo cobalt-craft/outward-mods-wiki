@@ -291,6 +291,14 @@ and a sender↔uid authorization is required.
 
 **API notes and traps**
 
+- **Fire-and-forget ladder (`NetKit.Core.FireAndForgetLadder`).** The pure decision ladder behind
+  CompanionKit's transient carriers (`NetBus.RegisterFireAndForget`): fire / cast-received /
+  proxy-received as three truth tables, unit-tested without a game. Since 0.2.7 the cast leg takes a
+  `masterOriginated` option: a moment the MASTER decides (CompanionKit's `ck.pet.cue` — the host
+  rolls a guest pet's dodge) applies on the owning guest instead of the own-echo skip, because that
+  guest never fired it. Off, the ladder is byte-identical to before; the option touches exactly one
+  cell of the table (pinned in `tests/NetKit.Tests/FireAndForgetLadderTests.cs`). NetKit itself has
+  no config for it — the option is a registration-time fact of the consumer's carrier.
 - **Send targets and solo play.** In Outward's offline session the local player is the master.
   `SendToAll` and `SendToMaster` self-execute locally even offline; `SendToOthers` silently no-ops
   in solo. So a master → `SendToOthers` broadcast must always be paired with a local call that

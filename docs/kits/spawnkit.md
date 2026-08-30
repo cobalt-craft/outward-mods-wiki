@@ -281,6 +281,7 @@ Unknown verb or `help` lists them all.
 | `spawnmenu` | Toggle the in-game menu regardless of `MenuKey`. |
 | `lootprobe` | Per-spawn corpse-loot diagnosis. |
 | `bonedump` | Skeleton/rig diagnosis for a spawned body (the "stretched to a vertical line" failure mode). |
+| `postrace <name\|uid:xxx> [seconds] [hz]` | Position trace on one live spawn: grounded/falling/agent/ragdoll/clip + what its collider overlaps, one line per sample (for "the enemy keeps launching into the sky"). `postrace off` stops it. |
 | `skwarmdump` | Warm-mirror census: this machine's warm set, every peer's row, the room-wide intersection and the want book (see *Room-wide warm mirror*). |
 | `skcoopdump` | Co-op state on this machine: handshakes, mirrored spawns, message counters. (More co-op dev verbs under `help`: `skinject` / `skfail` / `skdrop` / `skresync` / `skgone` / `skstream` / `skfollow`.) |
 | `selftest` | Sanity-check the install; look for `[SELFTEST] … DONE` in the log. |

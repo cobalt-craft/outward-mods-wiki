@@ -268,9 +268,11 @@ config.
 | `NpcRegistry.Register(NpcSpec)` | Register one NPC; call once from your `Awake`. A registration arriving after pack-load builds its template on demand. |
 | `NpcRegistry.TemplatesBuilt` | Has the pack-load template build run? `false` means nothing is spawnable yet. |
 | `NpcRegistry.Find(id)` | Look up a registered `NpcSpec`. |
-| `NpcRegistry.TrySpawn(id)` | Spawn at the spec's placement (master-only, duplicate-safe). |
-| `NpcRegistry.SpawnAt(id, pos, rotY)` | Spawn at an explicit position/yaw. |
-| `NpcRegistry.SpawnAtAndGet(id, pos, rotY)` → `Character` | Same, handing back the body (or the already-live one); null = not spawned, reason logged. |
+| `NpcRegistry.TrySpawn(id)` | Spawn at the spec's placement (master-only, duplicate-safe). World not live → deferred (below). |
+| `NpcRegistry.SpawnAt(id, pos, rotY)` / `SpawnAt(id, pos, rotY, SpawnPolicy)` | Spawn at an explicit position/yaw. **The spawn gate (0.1.7):** while `ForgeKit.Lifecycle.IsGameplayLive()` is false (a load in flight, or the loader still holding gameplay paused — the "press any key" window) a body would come up T-posed / naked, so the registry never spawns into it. `SpawnPolicy.Defer` (the default here) spawns the moment the gate opens (≤30 s, then anyway; abandoned on a scene change); `SpawnPolicy.Refuse` returns false with one `[STORYKIT] … spawn REFUSED — gameplay is not live (…)` line. |
+| `NpcRegistry.SpawnAtAndGet(id, pos, rotY)` / `SpawnAtAndGet(id, pos, rotY, SpawnPolicy)` → `Character` | Same, handing back the body (or the already-live one); null = not spawned, reason logged. The default policy is **Refuse** — a caller of this overload needs a synchronous body; wait on `ForgeKit.Lifecycle.WhenGameplayLive` first, or pass `Defer` and accept a null now. |
+| `NpcSpec.WalkSpeed` (0.3) / `NpcSpec.RunSpeed` (1.1) | The `AiSpec.WanderSpeed` vocabulary. The default is **`WalkSpeed`** since 0.1.7 — vanilla's townsperson stroll; SideLoader's 1.1 default is a full run and was every "sprinting NPC" sighting. Say `RunSpeed` when you mean it. |
+| `[STORYKIT] posture '<id>' @3s: …` (log line) | The posture census, one line per spawned body ~3 s after spawn: `renderers= visualsInit= animator= init= ctrl= aiRoot= closeToPlayer= spawnAnimDone= live=`. A bare body (Bug 46) gets `InitDefaultVisuals`+`Rebind`; an unbound animator gets enabled+`Rebind`; an inactive AI root on a live world is re-activated only when vanilla's own rule would have (spawn anim done, alive, not quest-gated) and otherwise just named. A healthy line on every spawn is what proves the gate held. |
 | `NpcRegistry.TryGetLive(id, out Character)` / `TryGetMerchant(id, out Merchant)` | The live body / its grafted vanilla `Merchant`. |
 | `NpcRegistry.IsInDialogue(id)` → `bool` | True while the NPC is talking or trading (dialogue tree running, listed in the game's conversation roster, or `Merchant.Buyer` set). A consumer that walks the NPC polls this to stop mid-conversation. |
 | `NpcRegistry.Rebuild(id, NpcSpec)` / `ReplaceGreetings(id, greetings)` | Swap the dialogue of a STANDING NPC (greeting variants, new rows) without a despawn. Only the dialogue half is honoured live — body shape (Mobile/Combat/Merchant/Backpack/Faction) is fixed by the template. |
@@ -283,8 +285,84 @@ config.
 
 Core data types: `NpcSpec`, `Placement`, `TrainerSpec`, `DialogueSpec`, `Choice` (with
 `Choice.Train` / `Choice.Reply` / `Choice.Menu` / `Choice.Shop` / `Choice.Action` factories), `AiSpec`, `CombatSpec`,
-`MerchantSpec`, `OutfitSpec`, `SkillTreeDef`, `SlotDef`, `SpecIssue`. Pure helpers: `OutfitRoll.Pick(pool, roll01)`,
+`MerchantSpec`, `OutfitSpec`, `VisualIndices` (`NpcSpec.Visuals` — explicit gender/skin/head/hair/hair-colour
+indices; wins over `RandomVisuals`), `SkillTreeDef`, `SlotDef`, `SpecIssue`. Gear by ItemID: `WeaponId`,
+`HelmetId`, `ChestId`, `BootsId`, `BackpackId` (`BackpackName` wins when both are set), `ShieldId`. Pure helpers: `OutfitRoll.Pick(pool, roll01)`,
 `VisualRoll.Seed(id, salt)` / `Roll(seed, bounds)` / `Roll01(seed, stream)`.
+
+### Ring spawn — several NPCs around a point, collision-safe (`RingSpawner`, 0.1.8)
+
+Register your specs, then put them on a ring in one call. Each slot is navmesh-snapped (Walkable
+area, 2.5 m), refused when a non-trigger collider stands at body height or another body was just
+placed within `minSpacing`, and re-tried through `StoryKit.Core.RingPlan.Fallbacks` (±15°, ±30°,
+then radius ×0.75 / ×1.25) before the spec is given up on. Spawns go through
+`NpcRegistry.SpawnAtAndGet(id, pos, yaw, SpawnPolicy.Refuse)`, so the gameplay-live gate applies.
+
+```csharp
+public sealed class RingSpawnResult { public List<Character> Spawned; public List<string> Refused; public string Describe(); }
+public static class RingSpawner {
+    public static RingSpawnResult SpawnAround(IList<string> specIds, Vector3 centre, Vector3 heading, float radius,
+        float centreAngleDeg = 180f, float spreadDeg = 120f, float minSpacing = 1.5f, bool faceCentre = true);
+}
+```
+
+`centreAngleDeg` is measured clockwise from `heading` (a world forward): pass the player's
+`transform.forward` and 180 to put the group behind the player, 0 to put it in front.
+
+```csharp
+var r = StoryKit.RingSpawner.SpawnAround(new[] { "my_guard_1", "my_guard_2", "my_guard_3" },
+    player.transform.position, player.transform.forward, radius: 4f);
+Plugin.Log.LogMessage(r.Describe());   // "3 spawned" or "2 spawned, 1 refused [my_guard_3: every candidate blocked (…)]"
+foreach (string why in r.Refused) NpcRegistry.Unregister(why.Split(':')[0]);   // per-spawn specs must not linger
+```
+
+Pure planner: `RingPlan.Slots(count, radius, centreAngleDeg, spreadDeg)`, `RingPlan.Fallbacks(slot, radius)`,
+`RingPlan.Spaced(candidate, placed, minSpacing)` over `RingSlot { AngleDeg, X, Z }`. Log tag `[RING]`.
+Not live-verified yet.
+
+### Saved characters — read other saves, build a look-alike, hand items across
+
+Since 0.1.6 StoryKit can read the player's OTHER saved characters (the ones not being played) and
+turn one into an NPC that looks like them, and it can move items between such a save and the live
+character. First consumers: Echoes (the wandering look-alikes) and DangerousRoads' "familiar
+stranger" card. Everything lives in the `StoryKit.Saves` namespace (plugin side) and
+`StoryKit.Core` (the pure parser, unit-tested).
+
+| Member | Purpose |
+|---|---|
+| `SaveScan.Scan(log, warn)` → `List<SavedCharacterRecord>` | Walk `SaveGames/<account>/Save_*/`, load the newest readable snapshot of each character with the game's own `CharacterSave.LoadFromFile` (gzip + XML; safe in-game, no `SaveManager` tables). **Null = the save path is not known yet** (retry later); **empty = known, no saves**. |
+| `SavedCharacterRecord` | `Uid`, `Name`, `AreaName`, `Instance` / `SnapshotDir` (the snapshot folder), `IsRetired`, `Hardcore`, `Visuals`, `Items` (every parsed entry), `EquippedItemIds`, `BagUid`, `Offer()` (pouch + bag contents), `IsInUse` (is this the character being played). |
+| `SaveScan.IsInUse(uid)` | `SaveManager.IsCharInUse` with the null guards. Always exclude in-use characters from anything that spawns or writes. |
+| `SavedCharacterSpec.FromRecord(rec, id, opts)` → `NpcSpec` | The look-alike: the save's five visual indices verbatim (`NpcSpec.Visuals`) and the worn gear resolved to SL slots via each prefab's `EquipSlot` (`HelmetId`/`ChestId`/`BootsId`/`BackpackId`, plus `WeaponId`/`ShieldId` when `opts.ShowWeapons`). Options: `ShowWeapons`, `ShowBackpack`, `Faction`, `Mobile` (default true), `Greeting`. Placement, AI tuning and dialogue rows are yours to add before `NpcRegistry.Register`. |
+| `SaveHandoff.Mint(SavedItem, Transform dest)` → `Item` | A live copy of one saved entry: `GenerateItemNetwork` + `ChangeParent` (guest-safe), stack size, durability stamped after `ProcessInit`, enchants via vanilla's first-update queue. |
+| `SaveHandoff.OfferPick(rec, offer, taker, onTaken)` | Show the offered entries (typically `rec.Offer()`) to the LOCAL player in the vanilla container panel; the first item moved out fires `onTaken(savedEntry, liveItem)`, closes the panel and destroys the other copies (Take All is hidden, and any extra removal is destroyed regardless). |
+| `SaveHandoff.RemoveFromSave(rec, savedEntry, qty)` → `bool` | Write the take back: a NEW snapshot folder `Save_<uid>/<yyyyMMddHHmmss>/` (every file copied, the character file rewritten with the entry removed or its `Quantity` reduced, `PSave.DateTime` bumped, `Manifest.txt` ending `Done`). Refuses while a save is in progress or the character is in use. Cloudward syncs by folder name, so it is an ordinary push. |
+| `SavedItemParser` (Core) | `TryParse(xml)`, `WornOf` / `PouchOf` / `BagContentsOf` / `Offer`, `EquippedItemIds`, `EnchantmentIds(subClassesData)`, `NewestFirst`. Hierarchy encodings are vanilla's: `"2"+owner` worn, `"1Pouch_"+owner+";…"` pouch, `"1"+bagUid+"_Content;…"` bag. |
+| `SaveSnapshotRules` (Core) | `SnapshotName` / `NextSnapshotName` (always sorts newest), `PSaveStamp`, `EditItemEntry`. |
+
+```csharp
+using StoryKit.Saves;
+
+List<SavedCharacterRecord> saves = SaveScan.Scan(m => Log.LogMessage(m), w => Log.LogWarning(w));
+if (saves == null) return;                    // save path not ready — try again on the next scene load
+foreach (SavedCharacterRecord rec in saves)
+{
+    if (rec.IsRetired || rec.IsInUse) continue;
+    NpcSpec spec = SavedCharacterSpec.FromRecord(rec, "mymod.stranger." + rec.Uid,
+        new SavedCharacterSpecOptions { Faction = "Merchants", Greeting = "You seem familiar." });
+    spec.Combat = new CombatSpec { TargetableFactions = new List<string> { "Bandits" } };
+    NpcRegistry.Register(spec);
+    Character body = NpcRegistry.SpawnAtAndGet(spec.Id, pos, yaw);
+
+    // Later, from a Choice.Action callback:
+    SaveHandoff.OfferPick(rec, rec.Offer(), player, (saved, live) =>
+        SaveHandoff.RemoveFromSave(rec, saved, live.RemainingAmount));
+}
+```
+
+Log tag for the hand-off: `[SAVEHANDOFF]`. No config keys of its own — the consumer decides what
+to offer and when. Everything here is **built, not live-verified** until its consumer's testplan
+says otherwise.
 
 ### Callback rows (`Choice.Action`) — a reply that knows something
 

@@ -163,6 +163,45 @@ why `RemoveRadiusMeters` matters: the guards give their slots back only once nob
 
 *Built 2026-08-26, not live-verified — see `docs/road-patrol-testplan.md` (PT0–PT21).*
 
+## The familiar stranger
+
+*"A traveller is under attack to the east."* One or two of **your other saved characters** — the
+ones on this machine's character-select screen, built into look-alikes from their saves (face, hair,
+armour, weapon, backpack) — are on the road fighting two to four of the region's own creatures. They
+are not invincible. Walk past and they may die.
+
+Save them (any damage from you, your pet or an arrow, and every mob dead with at least one of them
+standing) and the survivor says: *"Thank you stranger. You seem familiar. I don't have much to
+offer but my life is worth more than any of the trinkets in my backpack. If you see anything you like
+it is yours."* Pick **Look in the backpack** and that character's real backpack and pouch open in the
+ordinary container window. Take **one** item or stack: it goes into your inventory, the window
+closes, and it is **permanently removed from the other character's save** (written as a new save
+snapshot — the next time you play that character, the item is gone). One pick per stranger per
+encounter; afterwards they just say *"Take care, stranger."*
+
+The character you are currently playing is never one of them, nor is a retired one. With no other
+saved character on the machine the card simply never comes up (one warning in the log at boot).
+
+```ini
+[Events]
+StrangerWeight = 0.25
+StrangerCooldownSeconds = 900
+
+[Stranger]
+MobsMin = 2
+MobsMax = 4
+MaxStrangers = 2
+StalemateSeconds = 90
+RewardEnabled = true
+```
+
+`RewardEnabled = false` keeps the rescue line but never opens the backpack and never touches any
+save. Commands: `roadsstranger [status|saves|spawn|resolve|help|despawn]`, `roadscard stranger
+[at=here count=<1|2> mobs=<n>]`. Log tag `[STRANGER]` (the save write logs `[SAVEHANDOFF]`).
+
+*Built 2026-08-29, not live-verified — see `docs/stranger-testplan.md` (ST0–ST10). Single-player
+first; in co-op the card is host-only and a guest clicking the row is refused.*
+
 **Finding him.** Besides the toast's bearing, the HUD compass shows a **green dot** for the merchant
 from the moment he appears until he leaves — at any distance, slightly larger than the red hostile
 blips, so it reads as a place to walk toward rather than a threat. `[Compass] ShowMerchantBlip`
@@ -181,6 +220,47 @@ pointing at your partner, and is not drawn by DangerousRoads.
 If the road is blocked on the way — a roadside point the navmesh cannot reach — he skips past it
 and keeps walking rather than standing there; only a stall at the very gate, or several in a row,
 ends the walk early (he despawns, and the log says why).
+
+## The Levant shakedown ("Slumbush")
+
+The first card that is dealt **in a city**, and the first with a rule of its own: it only ever
+joins the deck in **Levant**. About 3% of city draws there (the rest are blanks — see below): a
+shaking voice behind you says *"Don't turn around. Leave 200 silver on the ground and you get to
+walk away."* You cannot move while the voice speaks (the game's own bed-lock, released the moment
+the box closes; while it is up, advance the text with the mouse — the halt also swallows the
+"continue" key). Two answers:
+
+- *"This place seems like trouble, I better not start any."* — 200 silver leaves your inventory
+  (bag first, then pouch) and the thugs melt away. If you cannot cover it, they attack anyway.
+- *"Thugs like this are worse than the scourge."* — 1–3 thugs in tattered clothes with iron
+  weapons, standing ~7 m behind you, turn hostile. One of them carries 60 silver; loot his corpse.
+  Closing the box without answering counts as refusing.
+
+Log tag `[SLUM]`. Force it anywhere with `roadscard slumbush [count=1..3 demand=<silver> loot=<silver> radius=<m>]`
+(the log notes when you forced it somewhere it would have sat out). Tuning lives in `[Slumbush]`
+(`DemandSilver`, `LootSilver`, `SpawnRadius`, `DecisionSeconds`, `LeaveSeconds`, `StalemateSeconds`,
+`ReplySeconds`, `ThugHealth`, `ThugDamageMult`, `ThugChanceToAttack`) and `[Events] SlumbushWeight / SlumbushCooldownSeconds / SlumbushWhen`.
+
+## Decks per kind of place, and the blank card
+
+Every mapped area is now dealt a deck — the **overworld** deck (ambush, merchant, patrol,
+stranger), a **city** deck and a **dungeon** deck. The road cards carry `zone:overworld` in their
+own rule, so they never turn up in town or underground. What makes the other decks work is the
+**blank card**: an event that does nothing, counts as fired, and re-arms the clock. Its weight is
+the one per-zone number in the deck:
+
+```ini
+[Events]
+BlankWeightOverworld = 0      # the road deck exactly as before; raise it to thin out road events
+BlankWeightCity = 0.97        # + SlumbushWeight 0.03 → ~3% shakedowns in Levant, all blanks elsewhere
+BlankWeightDungeon = 1.0      # no dungeon card yet: every dungeon draw is a blank
+```
+
+`[Events] DeckEnabled = false` still means "the road mod exactly as before": ambushes on the road,
+and nothing at all in a city or dungeon.
+
+`roadsdeck` shows the deck for the zone you are standing in (`world zone=City …`), with the road
+cards listed as `SITS OUT — needs zone:overworld`.
 
 ## Known issues
 
@@ -269,12 +349,16 @@ no config file-watcher of its own, so an edit alone does nothing until then).
 | | `AmbushWeight` | `1.0` | Relative draw weight of the hostile wave. |
 | | `MerchantWeight` | `0.35` | Relative draw weight of the wandering merchant (`0` = never). |
 | | `MerchantCooldownSeconds` | `600` | Shortest gap between two merchants, stamped when drawn. |
+| | `BlankWeightOverworld` / `BlankWeightCity` / `BlankWeightDungeon` | `0` / `0.97` / `1.0` | Weight of the do-nothing blank card in each kind of place (see [Decks per kind of place](#decks-per-kind-of-place-and-the-blank-card)). |
+| | `SlumbushWeight` / `SlumbushCooldownSeconds` | `0.03` / `1800` | The Levant shakedown card's weight (city deck only) and cooldown. |
+| | `AmbushWhen` / `MerchantWhen` / `PatrolWhen` / `StrangerWhen` / `SlumbushWhen` | *(empty)* | When that card may **join the deck** — a world rule checked before every draw (see [When a card may join the deck](#when-a-card-may-join-the-deck)). Empty = always. |
 | `[Merchant]` | `Health` | `900` | The merchant's max health. Applies to the next merchant. |
 | | `Protection` | `20` | Flat damage protection. Next merchant. |
 | | `DamageMult` | `0.25` | Multiplier on the damage he deals (`1` = unchanged). Next merchant. |
 | | `WalkSpeed` | `0.5` | His walking speed: a multiplier on the body's run speed (vanilla wanderers 0.3, `1.1` is a jog). Live. |
 | | `ExitRadius` | `6` | How close to the exit counts as arrived (he despawns there). Live. |
 | | `StuckSeconds` | `90` | Despawn after this long with no progress outside combat (`0` = never). Live. |
+| | `DespawnDeferSeconds` | `180` | He never leaves while his shop panel or his dialogue is open — arriving at the exit and giving up as stuck both **wait** (he stands still) until it closes, because destroying him mid-trade leaves the shopper's UI stuck on a transaction that can never finish. This is the ceiling on that wait: past it he goes anyway with a warning. `0` or less = wait for as long as the shop is open. Live. |
 | | `MinRouteMeters` | `150` | Prefer an exit at least this far from where he appears. Next merchant. |
 | | `DefendsHimself` | `true` | Fights back against bandits (never you). `false` = fully passive. Next merchant. |
 | | `GreetRadius` | `4` | Stops and faces a player this close (metres); `0` = never stops (dialogue still holds him). Live. |
@@ -330,11 +414,16 @@ DeckEnabled = true
 AmbushWeight = 1.0
 MerchantWeight = 0.35
 MerchantCooldownSeconds = 600
+# Merchants keep to daylight; the stranger only turns up once you've joined a faction.
+MerchantWhen = day
+StrangerWhen = faction:BlueChamber | faction:HeroicKingdom | faction:HolyMission
 
 [Merchant]
 Health = 900
 WalkSpeed = 0.5
 StuckSeconds = 90
+# Never vanish out from under an open shop panel; give up waiting after three minutes.
+DespawnDeferSeconds = 180
 RaidChance = 0.75
 
 [Placement]
@@ -370,7 +459,8 @@ lists them all.
 | `roadsprobe [x y z]` | Run the verification pipeline on one point and print every stage. No arguments = where you stand. |
 | `roadsmark` | Pick the best anchor right now, log it and draw a marker ray. Spawns nothing. |
 | `roadsnow [count] [species…]` | Force a wave immediately, through the real pipeline. |
-| `roadsdeck [draw\|<id> [key=value…]]` | The event deck: cards, live weights, cooldowns, last draw. `draw` forces a draw; `<id>` (`ambush`, `merchant`) forces that card, with the same optional keys as `roadscard`. |
+| `roadscard slumbush [count= demand= loot= radius=]` | Force the Levant shakedown here and now (any zone). |
+| `roadsdeck [draw\|<id> [key=value…]]` | The event deck: the world it was last built for, which cards joined (`ok`) or sat out (`SITS OUT — needs …`), live weights, cooldowns, last draw. `draw` forces a draw; `<id>` (`ambush`, `merchant`, …) forces that card even if it would have sat out (the log says so), with the same optional keys as `roadscard`. |
 | `roadscard [id] [key=value…]` | Force one card with optional overrides; every key is optional, so `roadscard merchant` is a plain draw of the merchant and `roadscard` alone is a real deck draw. Merchant: `exit=<n from roadsexits>` `dest=<exit-name substring>` `health=` `protection=` `damage=<mult>` `speed=` `defends=true\|false` `at=here` (spawn in front of you) `name=` `raid=0\|1` (forbid/force the bandit raid) `raiders=<n>` `raidspecies=<key>` `outfit=<n>` (pin an outfit from the pool) `protected=true\|false`. Ambush: `count=` `species=`. An unknown key is warned and ignored; an `exit`/`dest` that names nothing is refused. |
 | `roadsmerchant [status\|spawn [key=value…]\|despawn\|rescue\|raid\|goto <exit>]` | The wandering merchant: where he is (walk, greet pause, raid state) / put one on the road now (same keys as `roadscard merchant`) / remove him / fake the rescue so the thanks greeting shows / spring the bandit raid now / re-route him to an exit index from `roadsexits`. |
 | `roadsexits` | Census of this scene's zone exits: index, destination, distance and bearing from you. |
@@ -386,6 +476,47 @@ lists them all.
 The shared [ForgeKit](../kits/forgekit.md) command pack answers on this channel too, so `reloadcfg`,
 `teleport`, `pos`, `settime`, `scenedump` and the rest are available here as well.
 
+## When a card may join the deck
+
+Drawing a card is two steps. First the mod takes one snapshot of the world — game hour, night or
+day, rain, the region you are in, your story faction (Blue Chamber / Heroic Kingdom / Holy Mission
+/ none) and the quest flags you hold — and asks every card whether it wants to be in the deck
+*right now*. Only the cards that said yes are shuffled; the rest sit out, take no share of the roll
+and burn no cooldown. A card that sits out can leave the ambush alone in the deck, in which case
+no roll is pulled at all — a night-time deck with a daytime-only merchant is byte-identical to the
+mod before the deck existed.
+
+Each card's rule is the `[Events] <Card>When` line in
+`BepInEx/config/cobalt.dangerousroads.cfg`. Empty means always. The grammar is small enough to fit
+on one line:
+
+| Term | Holds when |
+|---|---|
+| `always` | always (the same as leaving the line empty) |
+| `night` / `day` | the game says it is night (22:00–05:00 in vanilla) / is not |
+| `hour=20-6` | the game clock is in the window — start inclusive, end exclusive, wraps midnight |
+| `rain>0.5` / `rain<0.2` | rain intensity (0–1) at least / below the number |
+| `flag:<quest event UID>` | you hold that quest event (story progression) |
+| `faction:<name>` | your story faction contains the text: `BlueChamber`, `HeroicKingdom`, `HolyMission`, `None` |
+| `region:<text>` | the current area's name contains the text |
+| `zone:overworld` / `zone:city` / `zone:dungeon` | the kind of place you are in (the game's town/city flag; every other mapped non-overworld area counts as a dungeon) |
+
+Join terms with `&` (all must hold) and `|` (any may hold); `!` in front of a term negates it.
+`&` binds looser than `|`, so `night & rain>0.3 | flag:X` reads as *night, and either rain or the
+flag*. Whitespace is free.
+
+```ini
+[Events]
+MerchantWhen = day & rain<0.5
+PatrolWhen = !night | faction:HeroicKingdom
+StrangerWhen = flag:SomeQuestEventUID & region:Chersonese
+```
+
+A line that does not parse is logged once (`[EVENT] [Events] merchantWhen '…' does not parse: …`)
+and the card is treated as **always** eligible — a typo never makes a card silently vanish.
+`roadsdeck` prints the world the deck was last built for and, per card, the rule and why it sat
+out; `reloadcfg` picks up an edited rule without a relaunch.
+
 ## For modders
 
 DangerousRoads is a thin director on top of [SpawnKit](../kits/spawnkit.md) — it decides *when* and
@@ -399,6 +530,16 @@ similar:
 
 Its species roster is derived from [DonorKit](../kits/donorkit.md)'s donor-scene table, the same
 roster SpawnKit uses.
+
+**The event deck is built in two objects, on purpose.** `WorldSnapshot` (an immutable value the
+director captures once per draw through `WorldProbe`) is handed to every card's `ICardCondition`
+(Specification pattern — leaves like `HourWindow`, `QuestFlagCondition`; composites `AllOf` /
+`AnyOf` / `Not`; `Always` as the null object; `CardCondition.Parse` is the config interpreter).
+`EligibleDeck.Build(cards, world)` is the builder that asks each card and keeps the refusals with
+their reason; `EventDeck.Draw` then rolls over what joined and knows nothing about the world. A card
+gets a code-level rule through `IEventCard.Condition` (ANDed with the operator's `When` text), so a
+story card can insist on its own plot flag without a config line. All of it except `WorldProbe` is
+in `core/DangerousRoads.Core/` and unit-tested.
 
 ## See also
 
