@@ -80,7 +80,21 @@ to 14.7 s in the field, which is long enough to drop them from the room. So Dang
   per region arm tells the player the ambush pool is temporarily smaller. `roadsroster` carries a
   room column: **● room-wide warm · ◐ warm here, cold on a peer · ○ cold here**.
 
-**DangerousRoads adds no config for this.** How strict the party gate is lives in SpawnKit's own
+- **A refused encounter says why, once.** The wave, the merchant raid, the far-cache restore, the
+  stranger's mobs and the patrol's troglodytes all check the same room-wide answer and refuse *before*
+  spawning rather than showing a guest a ghost — so in co-op you will sometimes see fewer encounters
+  than you would solo. **That is the gate working, not a bug.** The host log carries one dense line
+  naming every species currently being refused and the actor number of each cold peer
+  (`co-op encounters refused in '<region>': …`), reprinted only when the situation changes or once a
+  minute; `skwarmdump` on the host prints each peer's row. A far-parked creature is *held*, never
+  dropped, while a peer is cold.
+
+**How strict the gate is is still SpawnKit's knob; DR adds only the announcement.** The one setting
+DangerousRoads owns here is `[Coop] AnnounceQuietRoads` (default `false`), which shows the player one
+toast per region — *"The roads are quiet — a companion's world is still warming (N species)"* — when
+an encounter is refused for a cold peer. It is host-side only, testers are the audience, and with it
+off the host log line above still records the fact. How strict the party gate itself is lives in
+SpawnKit's own
 `[Coop] RoomWarmMode` (`BepInEx/config/cobalt.spawnkit.cfg`, default `RoomDegraded` — spawn anyway
 and ask the guests to warm; `RoomStrict` refuses instead), so one knob governs every consumer of the
 spawner rather than the ambush director and the spawn menu disagreeing about the same room. DR's own
@@ -324,6 +338,31 @@ before 0.1.2**, below SpawnKit's default of 8 — and BepInEx never rewrites a v
 exists in your config file, so an install created before then still has `6` and must be edited by
 hand to pick up the new default.
 
+### Roads feel too persistent
+
+A creature that is **fighting** is never parked by the far cache, however far you run — outrunning an
+ambush no longer ends it, and it keeps holding one of your `[Wave] MaxOwnActive` slots until it gives
+up and disengages. That is deliberate: a pursuer vanishing mid-swing read as a bug. It is also a
+recent change (2026-08-30). Before it, the exemption was asking the wrong thing about an AI body and
+so **never once fired** — every far fight was parked mid-swing, which is why a town patrol could
+report itself resolved with nobody alive and nobody dead.
+
+If you preferred the old, quieter roads, `[FarCache] ParkMidFightBeyond` gives a bounded version of
+it back: a hard distance past which even an active fight is parked. `0` (the default) means never.
+
+```ini
+[FarCache]
+## The one way to park a creature that is FIGHTING: a hard distance (meters, 3D) past which even an
+## active fight is parked. 0 = never.
+# Setting type: Single
+# Default value: 0
+ParkMidFightBeyond = 300
+```
+
+Live-tunable — edit `BepInEx/config/cobalt.dangerousroads.cfg` and run `reloadcfg`. A value below
+`[FarCache] DespawnRadius` is raised to it (a fighting creature is never parked closer than a
+peaceful one); `roadscache` and the mod's config summary line both report the effective figure.
+
 ## Settings
 
 All settings live in **`BepInEx/config/cobalt.dangerousroads.cfg`**, created on first launch. Every
@@ -381,6 +420,13 @@ no config file-watcher of its own, so an edit alone does nothing until then).
 | | `PrewarmCount` | `3` | How many of the region's species to warm in the background. |
 | | `PrewarmIntervalSeconds` | `20` | Gap between background prewarms. |
 | | `ExtraBlocklist` | *(empty)* | Comma-separated species never to spawn, appended to the built-in list of named story NPCs and set-piece bosses. Case-insensitive substring match. |
+| `[Coop]` | `AnnounceQuietRoads` | `false` | Host-only. Show the player one toast per region when a co-op encounter is refused because a peer cannot show the species yet ("The roads are quiet — a companion's world is still warming"). Off by default: the host log line names the species and the cold peers either way. How strict the gate itself is lives in SpawnKit's `[Coop] RoomWarmMode`. |
+| `[FarCache]` | `Enabled` | `true` | Park a creature nobody is near (silent despawn, position/facing/health remembered) and put it back when a player returns, so an abandoned wave stops holding a `[Wave] MaxOwnActive` slot for the rest of the zone visit. |
+| | `DespawnRadius` | `120` | Park when **every** player is farther than this (metres). |
+| | `RestoreRadius` | `80` | Put it back when any player comes within this of the parked spot. Clamped in code to at most 0.8 × `DespawnRadius` (the hysteresis that stops park/restore flapping). |
+| | `MaxEntries` | `24` | Ledger cap; past it the oldest parked creature is forgotten. |
+| | `MaxAgeMinutes` | `20` | Forget a parked creature after this long (`0` = never). |
+| | `ParkMidFightBeyond` | `0` | The only way to park a creature that is **fighting**: a hard distance past which even an active fight parks. `0` = never. See [Roads feel too persistent](#roads-feel-too-persistent) — this knob exists because until 2026-08-30 the "never park a fight" rule silently never worked. Values below `DespawnRadius` are raised to it. |
 | `[Notify]` | `ShowToast` | `true` | On-screen message when a wave arrives. |
 | | `ToastMinGapSeconds` | `30` | Minimum gap between toasts. |
 | | `ToastBearing` | `true` | Name the compass direction in the toast. |
@@ -432,6 +478,17 @@ MaxDistanceMeters = 200
 
 [Species]
 ExtraBlocklist = Wolfgang Veteran,Wolfgang Mercenary
+
+[Coop]
+# Testers: announce a co-op encounter refused because a guest is still warming (one toast per region).
+AnnounceQuietRoads = false
+
+[FarCache]
+DespawnRadius = 120
+RestoreRadius = 80
+# 0 = a creature that is fighting is never parked, however far you run. Set a distance (try 2-3x
+# DespawnRadius) if you would rather a fight you have left behind quietly ends.
+ParkMidFightBeyond = 0
 
 [Notify]
 ShowToast = true
